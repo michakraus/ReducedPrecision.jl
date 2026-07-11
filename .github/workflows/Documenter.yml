@@ -11,23 +11,31 @@ jobs:
   build:
     name: Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+      statuses: write
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
-      - run: |
-          julia --project=docs -e '
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()'
-      - run: |
-          julia --project=docs -e '
-            using Documenter: DocMeta, doctest
-            using ReducedPrecision
-            DocMeta.setdocmeta!(ReducedPrecision, :DocTestSetup, :(using ReducedPrecision); recursive=true)
-            doctest(ReducedPrecision)'
-      - run: julia --project=docs docs/make.jl
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: Generate experiment figures
+        # The docs embed the figures produced by the experiment scripts (written to plots/,
+        # which is git-ignored). Generate them here — in the main project, instantiated by
+        # julia-buildpkg — so they are available when the docs are built; make.jl copies them
+        # from plots/ into the docs source tree.
+        run: |
+          for problem in harmonic_oscillator pendulum double_pendulum toda_lattice; do
+            julia --project=. scripts/${problem}.jl
+            julia --project=. scripts/${problem}_longtime.jl
+          done
+      - name: Build and deploy docs
+        run: |
+          julia --project=docs -e 'using Pkg; Pkg.instantiate()'
+          julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}

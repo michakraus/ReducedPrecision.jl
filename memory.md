@@ -7,16 +7,23 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
 
 `ReducedPrecision` is a proper Julia package (`/Users/mkraus/Datashare/Julia/ReducedPrecision`):
 
-- **`Project.toml`** — package name/uuid + `CairoMakie`, `GeometricSolutions`, `GeometricBase`
-  added; all Geometric* deps dev-linked to sibling directories.
-- **`src/ReducedPrecision.jl`** — reusable pipeline:
-  - `PRECISIONS` and a method registry (`GEOMETRIC_METHODS` / `NONGEOMETRIC_METHODS`).
-  - `run_study(make_problem)` — runs every method × precision, catching per-run failures.
-    The problem is built once per precision and reused across methods (cheap for HO/pendulum,
+- **`Project.toml`** — package name/uuid + deps (`CairoMakie` + the Geometric* ecosystem),
+  resolved from the **registry** (no `[sources]`; `[compat]` pins the working versions). For local
+  work against the sibling checkouts, dev-link them into the git-ignored Manifest with
+  `pkg> dev ../GeometricBase ../GeometricEquations …`. Test-only `Test` via `[extras]`/`[targets]`.
+- **`src/`** — reusable pipeline, split into logical units and stitched together by
+  `ReducedPrecision.jl` (usings/exports/`include`s only):
+  - `methods.jl` — `PRECISIONS`, `MethodSpec`, the method registries, and the plotting groups
+    (`EULER_METHODS` / `OTHER_METHODS` / `METHOD_GROUPS`).
+  - `study.jl` — the `Run` type and `run_study(make_problem)` (runs every method × precision,
+    catching per-run failures; the problem is built once per precision and reused across methods —
     important for the EulerLagrange-generated double pendulum and Toda lattice).
-  - `verify_precision` / `assert_precision` — the precision-purity gate.
-  - `energy_error` (reuses `compute_invariant_error`), `solution_error`.
-  - `plot_energy_error` / `plot_solution_error` (CairoMakie, one panel per precision).
+  - `diagnostics.jl` — `verify_precision` / `assert_precision` (purity gate), `timevalues`,
+    `energy_error` (reuses `compute_invariant_error`), `solution_error`.
+  - `plotting.jl` — `plot_energy_error` / `plot_solution_error` / `plot_solution` (CairoMakie).
+- **`test/runtests.jl`** — unit tests (registry, run_study + purity across all precisions,
+  diagnostics, per-run failure capture, and that the plotting routines write both group figures).
+  Run with `julia --project=. -e 'using Pkg; Pkg.test()'`.
 - **`scripts/{harmonic_oscillator,pendulum,double_pendulum,toda_lattice}.jl`** — short-step
   drivers (HO & pendulum: Δt = 0.1, t ≤ 100; double pendulum: Δt = 0.01, t ≤ 10; Toda lattice:
   Δt = 0.1, t ≤ 100).

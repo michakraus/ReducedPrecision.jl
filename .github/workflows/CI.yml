@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     permissions: # needed to allow julia-actions/cache to proactively delete old caches that it has created
@@ -23,21 +23,17 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.10'
-          - '1.13'
-          - 'nightly'
+          - '1.10'   # LTS
+          - '1'      # latest stable release
         os:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
-        arch:
-          - x64
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v3
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
+          version: ${{ matrix.version }}   # arch left unset → each runner's native architecture
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
@@ -47,39 +43,3 @@ jobs:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
-  docs:
-    name: Documentation
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    permissions:
-      actions: write # needed to allow julia-actions/cache to proactively delete old caches that it has created
-      contents: write
-      statuses: write
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: '1'
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - name: Generate experiment figures
-        # The docs embed the figures produced by the experiment scripts (written to plots/,
-        # which is git-ignored). Generate them here — in the main project, already instantiated
-        # by julia-buildpkg — so they are available when the docs are built. make.jl copies them
-        # from plots/ into the docs source tree.
-        run: |
-          for problem in harmonic_oscillator pendulum double_pendulum toda_lattice; do
-            julia --project=. scripts/${problem}.jl
-            julia --project=. scripts/${problem}_longtime.jl
-          done
-      - uses: julia-actions/julia-docdeploy@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-      - name: Run doctests
-        shell: julia --project=docs --color=yes {0}
-        run: |
-          using Documenter: DocMeta, doctest
-          using ReducedPrecision
-          DocMeta.setdocmeta!(ReducedPrecision, :DocTestSetup, :(using ReducedPrecision); recursive=true)
-          doctest(ReducedPrecision)

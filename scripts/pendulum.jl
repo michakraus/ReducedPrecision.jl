@@ -17,6 +17,10 @@ const t₁ = nt * Δt
 
 make_problem(::Type{T}) where {T} = podeproblem(T; timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 
+# The pendulum Hamiltonian is parameter-free (l = m = g = 1, so H = p²/2 + cos q); wrap it in the
+# 4-argument (t, q, p, params) form expected by `energy_error` / `compute_invariant_error`.
+ham(t, q, p, params) = hamiltonian(t, q, p)
+
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
 runs = run_study(make_problem)
@@ -26,7 +30,7 @@ verify_precision(runs)
 # high-precision reference (Float64, high-order symplectic, same time grid)
 reference = integrate(make_problem(Float64), Gauss(8))
 
-plot_energy_error(runs, hamiltonian;
+plot_energy_error(runs, ham;
     path  = joinpath(plotdir, "pendulum_energy_error.png"),
     title = "Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 100)")
 

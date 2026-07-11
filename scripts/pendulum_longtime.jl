@@ -16,13 +16,16 @@ const t₁ = nt * Δt
 
 make_problem(::Type{T}) where {T} = podeproblem(T; timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 
+# Parameter-free pendulum Hamiltonian wrapped in the (t, q, p, params) form (see pendulum.jl).
+ham(t, q, p, params) = hamiltonian(t, q, p)
+
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
 runs = run_study(make_problem)
 
 verify_precision(runs)
 
-plot_energy_error(runs, hamiltonian;
+plot_energy_error(runs, ham;
     path  = joinpath(plotdir, "pendulum_longtime_energy_error.png"),
     title = "Pendulum — Relative Energy Error (Δt = 1, t ≤ 10⁴)")
 
