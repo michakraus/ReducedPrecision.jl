@@ -19,3 +19,6 @@ GeometricIntegrators = {path = "../GeometricIntegrators"}
 GeometricIntegratorsBase = {path = "../GeometricIntegratorsBase"}
 GeometricProblems = {path = "../GeometricProblems"}
 GeometricSolutions = {path = "../GeometricSolutions"}
+
+[compat]
+GeometricProblems = "0.6.24"
