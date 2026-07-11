@@ -50,6 +50,7 @@ jobs:
   docs:
     name: Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     permissions:
       actions: write # needed to allow julia-actions/cache to proactively delete old caches that it has created
       contents: write
@@ -61,6 +62,16 @@ jobs:
           version: '1'
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
+      - name: Generate experiment figures
+        # The docs embed the figures produced by the experiment scripts (written to plots/,
+        # which is git-ignored). Generate them here — in the main project, already instantiated
+        # by julia-buildpkg — so they are available when the docs are built. make.jl copies them
+        # from plots/ into the docs source tree.
+        run: |
+          for problem in harmonic_oscillator pendulum double_pendulum toda_lattice; do
+            julia --project=. scripts/${problem}.jl
+            julia --project=. scripts/${problem}_longtime.jl
+          done
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
