@@ -1,8 +1,8 @@
-# Reduced-precision study: double pendulum, long-time / coarse-step variant.
+# Reduced-precision study: double pendulum, coarse-step variant.
 #
 # Same pipeline as double_pendulum.jl (hand-built T-typed initial conditions/parameters,
-# since DoublePendulum has no ::Type{T} constructor), but with a coarse timestep Δt = 1 and
-# a long horizon t = 10_000 (nt = 10_000 steps). Δt = 1 is very coarse for this stiff,
+# since DoublePendulum has no ::Type{T} constructor), but with a coarser timestep Δt = 0.1 and
+# a longer horizon t = 1000 (nt = 10_000 steps). Δt = 0.1 is already coarse for this stiff,
 # chaotic system, so several runs (and possibly the reference) may fail — all are guarded.
 
 using ReducedPrecision
@@ -11,7 +11,7 @@ using GeometricProblems.DoublePendulum: hodeproblem, hamiltonian
 import GeometricProblems.DoublePendulum as DP
 
 const t₀ = 0.0
-const Δt = 1.0
+const Δt = 0.1
 const nt = 10_000
 const t₁ = nt * Δt
 
@@ -31,8 +31,8 @@ runs = run_study(make_problem)
 verify_precision(runs)
 
 plot_energy_error(runs, hamiltonian;
-    path  = joinpath(plotdir, "double_pendulum_longtime_energy_error.png"),
-    title = "Double Pendulum — Relative Energy Error (Δt = 1, t ≤ 10⁴)")
+    path  = joinpath(plotdir, "double_pendulum_energy_error_dt=$(Δt).png"),
+    title = "Double Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 10³)")
 
 # high-precision reference (Float64, high-order symplectic, same time grid)
 reference = try
@@ -44,11 +44,11 @@ end
 
 if reference !== nothing
     plot_solution_error(runs, reference;
-        path  = joinpath(plotdir, "double_pendulum_longtime_solution_error.png"),
-        title = "Double Pendulum — Solution Error (Δt = 1, t ≤ 10⁴, vs. Float64 Gauss(8))")
+        path  = joinpath(plotdir, "double_pendulum_solution_error_dt=$(Δt).png"),
+        title = "Double Pendulum — Solution Error (Δt = 0.1, t ≤ 10³, vs. Float64 Gauss(8))")
 
     plot_solution(runs; reference = reference,
-        path   = joinpath(plotdir, "double_pendulum_longtime_solution.png"),
-        title  = "Double Pendulum — Configuration-Space Trajectory (Δt = 1, t ≤ 10⁴)",
+        path   = joinpath(plotdir, "double_pendulum_solution_dt=$(Δt).png"),
+        title  = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.1, t ≤ 10³)",
         xlabel = "θ₁", ylabel = "θ₂")
 end

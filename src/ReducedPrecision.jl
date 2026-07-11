@@ -26,13 +26,17 @@ module ReducedPrecision
 
 using GeometricIntegrators
 using GeometricIntegratorsBase: Solution, solutionstep, current
+import GeometricIntegratorsBase: initmethod, isimplicit
 using GeometricSolutions
 using GeometricBase
-using GeometricEquations: parameters
+using GeometricEquations: parameters, GeometricProblem
+using SimpleSolvers: DogLeg, Newton
+using RungeKutta: Tableau, PartitionedTableau, SymplecticPartitionedTableau, TableauGauss
 using CairoMakie
 
 export PRECISIONS, MethodSpec, GEOMETRIC_METHODS, NONGEOMETRIC_METHODS, ALL_METHODS
-export EULER_METHODS, OTHER_METHODS, METHOD_GROUPS
+export EULER_METHODS, OTHER_METHODS, MIDPOINT_METHODS, METHOD_GROUPS
+export LV2D_METHODS, LV4D_METHODS, LV2D_GROUPS, LV4D_GROUPS
 export Run, run_study, integrate_bounded, assert_precision, verify_precision
 export energy_error, solution_error, timevalues
 export plot_energy_error, plot_solution_error, plot_solution

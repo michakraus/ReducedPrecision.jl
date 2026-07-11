@@ -25,6 +25,37 @@ non-geometric.
 | Crank–Nicolson     | non-geometric | 2 | trapezoidal rule |
 | RK4                | non-geometric | 4 | explicit Runge–Kutta |
 
+### Partitioned Gauss(2) midpoint variants
+
+A third comparison group holds four flavours of the 2-stage Gauss (partitioned midpoint) rule that
+are algebraically the same method but differ in implementation detail:
+
+| Method | Construction |
+|:--|:--|
+| `PRK Gauss(2)`  | `PartitionedTableau(Gauss(2))` — the Gauss tableau duplicated for `q` and `p` |
+| `SPRK Gauss(2)` | `SymplecticPartitionedTableau(Gauss(2))` — the `p`-tableau is the symplectic conjugate, so symplecticity holds to floating-point accuracy by construction |
+| `PRK Gauss(2), â=b̂=ĉ=0`  | as `PRK`, with the rounding-error compensation coefficients zeroed |
+| `SPRK Gauss(2), â=b̂=ĉ=0` | as `SPRK`, with the rounding-error compensation coefficients zeroed |
+
+These are all symplectic (drawn solid) and let the study isolate how the symplectic-vs-duplicated
+tableau construction and the compensated-summation coefficients `â, b̂, ĉ` affect energy conservation
+in reduced precision.
+
+### Variational integrators for the degenerate-Lagrangian problems
+
+The Lotka–Volterra problems are degenerate Lagrangian systems (IODE/LODE), on which the explicit,
+symplectic-Euler and DIRK methods above are undefined. They are compared instead with several
+flavours of the implicit midpoint rule that do apply: `Implicit Midpoint`, `VPRK(Gauss(1))`,
+`PMVImidpoint` and (2D only) `CMDVI`. `VPRK(Gauss(1))` is rebuilt at the run precision so it stays
+type-pure; `CMDVI` is omitted for the 4D system, where it fails to converge.
+
+### Nonlinear solver
+
+The implicit methods' stage equations are solved with the trust-region **`DogLeg`** solver of
+`SimpleSolvers` (rather than a line-search Newton iteration), which is more robust in reduced
+precision. Explicit methods carry no solver. The solver is a keyword of `run_study` /
+`integrate_bounded` (default `DogLeg()`), so `Newton()` can be selected for comparison.
+
 ### One problem form for all methods
 
 The literal method list cannot be run on a single problem form: the special `ExplicitEuler` /
@@ -43,21 +74,33 @@ geometric-vs-non-geometric comparison.
 | Pendulum | `podeproblem` | `::Type{T}` constructor | Float64 `Gauss(8)` |
 | Double pendulum | `hodeproblem` | hand-built T-typed inputs | Float64 `Gauss(8)` |
 | Toda lattice (N = 16) | `hodeproblem` | hand-built T-typed inputs | Float64 `Gauss(8)` |
+| Lotka–Volterra 2D | `lodeproblem` (`LotkaVolterra2dSingular`) | hand-built T-typed inputs | Float64 `Gauss(8)` |
+| Lotka–Volterra 4D | `lodeproblem` (`LotkaVolterra4dLagrangian`, `A_quasicanonical_reduced`) | hand-built T-typed inputs | Float64 `Gauss(8)` |
 
-The double pendulum and Toda lattice are generated symbolically by `EulerLagrange` and have no
-`::Type{T}` constructor, so `make_problem(T)` builds the initial conditions, timespan, timestep and
-parameters at precision `T` explicitly. The Toda lattice additionally carries a lattice size `N`
-(here `N = 16`, kept small so the sweep — in particular the high-order reference and the implicit
-solves — stays tractable) and a Hamiltonian `hamiltonian(t, q, p, params, N)` that takes `N`, so a
-closure is passed to the energy-error routine.
+The double pendulum, Toda lattice and both Lotka–Volterra problems are generated symbolically by
+`EulerLagrange` and have no `::Type{T}` constructor, so `make_problem(T)` builds the initial
+conditions, timespan, timestep and parameters at precision `T` explicitly. The Toda lattice
+additionally carries a lattice size `N` (here `N = 16`, kept small so the sweep — in particular the
+high-order reference and the implicit solves — stays tractable) and a Hamiltonian
+`hamiltonian(t, q, p, params, N)` that takes `N`, so a closure is passed to the energy-error routine.
+
+The Lotka–Volterra problems are **degenerate Lagrangian** systems posed as LODEs; the 4D case uses
+the quasi-canonical reduced gauge matrix `A_quasicanonical_reduced` (with the exact one-form `B`) so
+the discrete system is non-singular.
 
 ## Scenarios
 
-Each problem is run in two scenarios:
+Each problem is run in two scenarios, a fine short-horizon run and a coarser one:
 
 * **Short / fine step** — harmonic oscillator, pendulum and Toda lattice use `Δt = 0.1`, `t ≤ 100`;
-  the double pendulum uses `Δt = 0.01`, `t ≤ 10` (its natural timescale is much shorter).
-* **Long / coarse step** — `Δt = 1`, `t ≤ 10 000`, to stress long-time stability.
+  the double pendulum uses `Δt = 0.01`, `t ≤ 10` (its natural timescale is much shorter); the
+  Lotka–Volterra problems use `Δt = 0.01`, `t ≤ 10`.
+* **Coarse step** — harmonic oscillator, pendulum and Toda lattice use `Δt = 1`, `t ≤ 10 000`; the
+  double pendulum uses `Δt = 0.1`, `t ≤ 1000`; the Lotka–Volterra problems use `Δt = 0.1`,
+  `t ≤ 100`.
+
+The output figure filenames encode the timestep (e.g. `…_dt=0.1_…`), so the two scenarios of a
+problem are distinguished by `Δt` rather than by a "longtime" label.
 
 ## Type-purity verification
 
@@ -83,9 +126,11 @@ which proves that no library in the stack silently promotes to `Float64`. Integr
 
 ## Plotting conventions
 
-* Every figure has **one panel per precision** (Float16 / Float32 / Float64) and is produced twice,
-  once for the **Euler** method group (`_euler`) and once for the **other** methods (`_other`), so
-  each figure stays readable.
+* Every figure has **one panel per precision** (Float16 / Float32 / Float64) and is produced once
+  per method group. The four Hamiltonian problems use three groups — **Euler** (`_euler`), **other**
+  (`_other`), and the **partitioned Gauss(2)** midpoint variants (`_midpoint`); the Lotka–Volterra
+  problems use a single **variational** group (`_variational`). Scripts pass their group set to the
+  plotting routines, which colour methods consistently within it.
 * Error plots use a **shared logarithmic y-axis** across all three panels, with the upper limit
   **capped at `1e5`** so runaway (non-geometric) errors are clipped rather than dominating the
   scale; the x-axis is fitted **exactly** to the integration interval.

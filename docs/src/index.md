@@ -12,11 +12,19 @@ and **Float64**, and in particular how *geometric* (symplectic) integrators comp
 * **accuracy** — the error of the computed solution relative to a reference, and
 * **long-time stability** — whether the energy error stays bounded over long integration times.
 
-The study uses four example problems from
-[GeometricProblems.jl](https://github.com/JuliaGNI/GeometricProblems.jl), each integrated with the
-symplectic and non-symplectic methods of
+The study uses six example problems from
+[GeometricProblems.jl](https://github.com/JuliaGNI/GeometricProblems.jl), each integrated with a
+range of symplectic and non-symplectic methods of
 [GeometricIntegrators.jl](https://github.com/JuliaGNI/GeometricIntegrators.jl), and each run in two
-scenarios (a fine short-horizon run and a coarse long-horizon run).
+scenarios (a fine short-horizon run and a coarser long-horizon run). The four Hamiltonian problems
+(harmonic oscillator, pendulum, double pendulum, Toda lattice) compare Euler-type methods, higher-
+order Runge–Kutta methods, and a group of partitioned Gauss(2) midpoint variants; the two
+degenerate-Lagrangian problems (Lotka–Volterra 2D and 4D) compare several flavours of variational
+implicit-midpoint integrator.
+
+The implicit solves use the trust-region **`DogLeg`** nonlinear solver of
+[SimpleSolvers.jl](https://github.com/JuliaGNI/SimpleSolvers.jl) by default, which is more robust in
+reduced precision than a line-search Newton iteration.
 
 A central goal of the implementation is **type purity**: every library in the stack
 (`GeometricIntegrators`, `GeometricIntegratorsBase`, `GeometricSolutions`, `GeometricEquations`,
@@ -38,8 +46,8 @@ A central goal of the implementation is **type purity**: every library in the st
   pendulum and Toda lattice.
 * **Float16 has hard limits at long horizons.** Once time exceeds the range where `t + Δt` is
   distinguishable in `Float16`, the implicit methods' initial guess breaks down; and on stiff
-  systems the `Float16` Newton solves can produce `NaN`. These are genuine properties of half
-  precision, surfaced (not hidden) by the study.
+  systems the `Float16` implicit solves can produce `NaN` directions even with the robust `DogLeg`
+  solver. These are genuine properties of half precision, surfaced (not hidden) by the study.
 
 See [Findings](@ref) for the full discussion.
 
@@ -51,11 +59,15 @@ julia --project=. scripts/harmonic_oscillator.jl
 julia --project=. scripts/pendulum.jl
 julia --project=. scripts/double_pendulum.jl
 julia --project=. scripts/toda_lattice.jl
-# long-time / coarse-step variants
+julia --project=. scripts/lotka_volterra_2d.jl
+julia --project=. scripts/lotka_volterra_4d.jl
+# coarser-step variants
 julia --project=. scripts/harmonic_oscillator_longtime.jl
 julia --project=. scripts/pendulum_longtime.jl
 julia --project=. scripts/double_pendulum_longtime.jl
 julia --project=. scripts/toda_lattice_longtime.jl
+julia --project=. scripts/lotka_volterra_2d_longtime.jl
+julia --project=. scripts/lotka_volterra_4d_longtime.jl
 ```
 
 Each script writes its figures to `plots/`. The documentation embeds those figures, so the scripts

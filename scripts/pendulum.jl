@@ -27,14 +27,14 @@ verify_precision(runs)
 reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, hamiltonian;
-    path  = joinpath(plotdir, "pendulum_energy_error.png"),
+    path  = joinpath(plotdir, "pendulum_energy_error_dt=$(Δt).png"),
     title = "Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 100)")
 
 plot_solution_error(runs, reference;
-    path  = joinpath(plotdir, "pendulum_solution_error.png"),
+    path  = joinpath(plotdir, "pendulum_solution_error_dt=$(Δt).png"),
     title = "Pendulum — Solution Error (Δt = 0.1, t ≤ 100, vs. Float64 Gauss(8))")
 
 plot_solution(runs; reference = reference,
-    path   = joinpath(plotdir, "pendulum_solution.png"),
+    path   = joinpath(plotdir, "pendulum_solution_dt=$(Δt).png"),
     title  = "Pendulum — Phase-Space Trajectory (Δt = 0.1, t ≤ 100)",
     xlabel = "q", ylabel = "p")

@@ -2,8 +2,9 @@
 
 ## Geometric vs. non-geometric integrators
 
-Across all four problems and both scenarios the qualitative distinction is consistent and matches
-the theory of geometric numerical integration:
+Across the four Hamiltonian problems and both scenarios the qualitative distinction is consistent
+and matches the theory of geometric numerical integration (the two degenerate-Lagrangian
+Lotka–Volterra problems use a separate variational-integrator comparison, discussed below):
 
 * **Symplectic methods** (symplectic Euler A/B, implicit midpoint) keep the energy error
   **bounded** — it oscillates around a small value rather than growing — over arbitrarily long
@@ -31,7 +32,7 @@ the theory of geometric numerical integration:
 
 ## Type purity
 
-`verify_precision` passes for **every successful run across all four problems**: `datatype`,
+`verify_precision` passes for **every successful run across all six problems**: `datatype`,
 `timetype`, and the element types of the stored `q`/`p` arrays all equal the requested precision.
 No library in the stack (`GeometricIntegrators`, `GeometricIntegratorsBase`, `GeometricSolutions`,
 `GeometricEquations`, `GeometricBase`, `SimpleSolvers`) silently promotes to `Float64`, including
@@ -48,15 +49,32 @@ These are real properties of `Float16`, surfaced by the study rather than worked
   initial guess sees `t₀ == t₁` and fails. This is why the short scenarios cap the horizon so that
   the full method × precision matrix is populated, while in the long scenarios some `Float16`
   implicit runs drop out.
-* **Non-convergent implicit solves on stiff systems.** On the double pendulum the `Float16` Newton
-  iteration produces `NaN` directions; at `Δt = 1` the double pendulum's implicit solves (and even
-  the `Gauss(8)` reference) fail at *every* precision because the step is comparable to the natural
-  period.
+* **Non-convergent implicit solves on stiff systems.** On the double pendulum the `Float16` implicit
+  solves produce `NaN` directions even with the robust `DogLeg` solver; and the coarser the step,
+  the more of the stiff-system implicit solves drop out. Switching from `Newton` to the trust-region
+  `DogLeg` improves robustness in general but does not rescue these genuinely half-precision-limited
+  solves.
 * **Problem-dependent robustness.** The Toda lattice, whose bump initial data keeps the state
   bounded, runs every method at every precision in the short scenario — considerably more
   `Float16`-friendly than the stiff, dimensional double pendulum.
 
 All such failures are caught per run, reported as skips, and never abort the sweep.
+
+## Implementation-detail and variational comparisons
+
+Two further comparison groups isolate finer effects:
+
+* **Partitioned Gauss(2) midpoint variants.** On the Hamiltonian problems, four algebraically
+  equivalent forms of the 2-stage Gauss rule (symplectic-by-construction vs. by-duplication, with
+  and without the rounding-compensation coefficients `â, b̂, ĉ`) coincide on the linear harmonic
+  oscillator but separate on the nonlinear problems, where the tableau construction and the
+  compensated-summation coefficients leave a visible imprint on the energy-error fine structure —
+  most so at Float64, where the floor is not precision-limited.
+* **Variational integrators on degenerate Lagrangians.** The Lotka–Volterra systems are compared
+  with several flavours of the implicit midpoint rule that apply to degenerate (IODE/LODE) systems.
+  They agree to their common order but differ in reduced-precision energy behaviour; `CMDVI`
+  integrates the 2D system but not the 4D one (its iterate leaves the positive orthant and the solve
+  breaks down there).
 
 ## Practical takeaways
 

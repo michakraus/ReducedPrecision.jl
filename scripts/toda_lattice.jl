@@ -43,17 +43,17 @@ runs = run_study(make_problem)
 verify_precision(runs)
 
 plot_energy_error(runs, ham;
-    path  = joinpath(plotdir, "toda_lattice_energy_error.png"),
+    path  = joinpath(plotdir, "toda_lattice_energy_error_dt=$(Δt).png"),
     title = "Toda Lattice — Relative Energy Error (Δt = 0.1, t ≤ 100)")
 
 # high-precision reference (Float64, high-order symplectic, same time grid)
 reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_solution_error(runs, reference;
-    path  = joinpath(plotdir, "toda_lattice_solution_error.png"),
+    path  = joinpath(plotdir, "toda_lattice_solution_error_dt=$(Δt).png"),
     title = "Toda Lattice — Solution Error (Δt = 0.1, t ≤ 100, vs. Float64 Gauss(8))")
 
 plot_solution(runs; reference = reference,
-    path   = joinpath(plotdir, "toda_lattice_solution.png"),
+    path   = joinpath(plotdir, "toda_lattice_solution_dt=$(Δt).png"),
     title  = "Toda Lattice — Phase-Space Trajectory (Δt = 0.1, t ≤ 100)",
     coords = coords, xlabel = "q₁", ylabel = "p₁")

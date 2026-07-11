@@ -26,6 +26,8 @@ makedocs(;
             "Pendulum"            => "pendulum.md",
             "Double Pendulum"     => "double_pendulum.md",
             "Toda Lattice"        => "toda_lattice.md",
+            "Lotka–Volterra 2D"   => "lotka_volterra_2d.md",
+            "Lotka–Volterra 4D"   => "lotka_volterra_4d.md",
         ],
         "Findings" => "findings.md",
     ],

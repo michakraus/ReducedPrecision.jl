@@ -11,14 +11,22 @@ function _find_run(runs, name, T)
     return nothing
 end
 
-# Wong 8-colour, colour-blind-safe palette (one colour per method in ALL_METHODS).
+# Colour-blind-safe palette (Wong 8 + four Tol muted colours), one colour per method. Twelve
+# entries cover the default groups (Euler + other + midpoint = 12 methods); shorter method sets
+# (e.g. the Lotka–Volterra variational comparison) simply use a prefix of the palette.
 const _PALETTE = ["#0072B2", "#E69F00", "#009E73", "#D55E00",
-                  "#56B4E9", "#CC79A7", "#F0E442", "#999999"]
+                  "#56B4E9", "#CC79A7", "#F0E442", "#999999",
+                  "#882255", "#44AA99", "#332288", "#661100"]
 const _REFERENCE_COLOR = :black
 
-function _method_colors()
-    Dict(spec.name => _PALETTE[mod1(i, length(_PALETTE))]
-         for (i, spec) in enumerate(ALL_METHODS))
+# Colours are assigned by a method's position in the flattened list of `groups`, so a given set
+# of plotting groups colours its methods consistently across all its figures.
+function _method_colors(groups)
+    specs = MethodSpec[]
+    for (_, methods) in groups, m in methods
+        any(s -> s.name == m.name, specs) || push!(specs, m)
+    end
+    Dict(m.name => _PALETTE[mod1(i, length(_PALETTE))] for (i, m) in enumerate(specs))
 end
 
 # Insert a suffix before the file extension, e.g. "foo.png" -> "foo_euler.png".
@@ -64,8 +72,7 @@ end
 
 # Generic grid plot: one panel per precision, one line per method, log-scale y. Methods are
 # drawn (and listed) in the order given by `methods`; every panel shares the same y-limits.
-function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods = ALL_METHODS, precisions = PRECISIONS)
-    colors = _method_colors()
+function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods, colors, precisions = PRECISIONS)
     np = length(precisions)
 
     # First pass: collect each panel's (spec, t, y) series and the global finite range.
@@ -145,8 +152,7 @@ end
 # Grid of 2D trajectory plots: one panel per precision, one trajectory per method (drawn and
 # listed in the order given by `methods`).
 function _plot_trajectory_grid(runs, coordsfun, xlabel, ylabel, ptitle, path;
-        methods = ALL_METHODS, precisions = PRECISIONS, reference = nothing)
-    colors = _method_colors()
+        methods, colors, precisions = PRECISIONS, reference = nothing)
     np = length(precisions)
     lims = reference === nothing ? nothing : _traj_limits(reference, coordsfun)
 
@@ -190,52 +196,57 @@ function _plot_trajectory_grid(runs, coordsfun, xlabel, ylabel, ptitle, path;
 end
 
 """
-    plot_energy_error(runs, hamiltonian; path, title)
+    plot_energy_error(runs, hamiltonian; path, title, groups = METHOD_GROUPS)
 
 Plot the relative energy error over time, one panel per precision, methods overlaid
-(geometric = solid, non-geometric = dashed). Two figures are written — one for the Euler
-methods and one for the remaining methods — with `_euler` / `_other` appended to `path`.
+(geometric = solid, non-geometric = dashed). One figure is written per entry in `groups`,
+with the group label appended to `path` (e.g. `_euler`, `_other`, `_midpoint`).
 """
-function plot_energy_error(runs, hamiltonian; path, title)
+function plot_energy_error(runs, hamiltonian; path, title, groups = METHOD_GROUPS)
+    colors = _method_colors(groups)
     figs = Any[]
-    for (label, methods) in METHOD_GROUPS
+    for (label, methods) in groups
         push!(figs, _plot_grid(runs, run -> energy_error(run.sol, hamiltonian),
-            "|ΔH / H₀|", "$title — $(_group_title(label))", _suffix_path(path, label); methods))
+            "|ΔH / H₀|", "$title — $(_group_title(label))", _suffix_path(path, label); methods, colors))
     end
     return figs
 end
 
 """
-    plot_solution_error(runs, reference; path, title)
+    plot_solution_error(runs, reference; path, title, groups = METHOD_GROUPS)
 
-Plot the state solution error over time versus `reference`, one panel per precision. As with
-`plot_energy_error`, two figures are written (`_euler` / `_other`).
+Plot the state solution error over time versus `reference`, one panel per precision. One
+figure is written per entry in `groups`, with the group label appended to `path` (e.g.
+`_euler`, `_other`, `_midpoint`).
 """
-function plot_solution_error(runs, reference; path, title)
+function plot_solution_error(runs, reference; path, title, groups = METHOD_GROUPS)
+    colors = _method_colors(groups)
     figs = Any[]
-    for (label, methods) in METHOD_GROUPS
+    for (label, methods) in groups
         push!(figs, _plot_grid(runs, run -> solution_error(run.sol, reference),
-            "‖x − x_ref‖", "$title — $(_group_title(label))", _suffix_path(path, label); methods))
+            "‖x − x_ref‖", "$title — $(_group_title(label))", _suffix_path(path, label); methods, colors))
     end
     return figs
 end
 
 """
     plot_solution(runs; path, title, reference = nothing, coords = _default_coords,
-                  xlabel = "q", ylabel = "p")
+                  xlabel = "q", ylabel = "p", groups = METHOD_GROUPS)
 
 Plot the 2D trajectory of each method's solution, one panel per precision (geometric = solid,
 non-geometric = dashed). `coords(sol)` returns the `(xs, ys)` to plot — by default phase space
 `(q, p)` for a one-degree-of-freedom system and configuration space `(q₁, q₂)` otherwise. When
 `reference` is given, the axes are fitted to the reference trajectory so runaway methods are
-clipped. Two figures are written (`_euler` / `_other`).
+clipped. One figure is written per entry in `groups`, with the group label appended to `path`
+(e.g. `_euler`, `_other`, `_midpoint`).
 """
 function plot_solution(runs; path, title, reference = nothing,
-        coords = _default_coords, xlabel = "q", ylabel = "p")
+        coords = _default_coords, xlabel = "q", ylabel = "p", groups = METHOD_GROUPS)
+    colors = _method_colors(groups)
     figs = Any[]
-    for (label, methods) in METHOD_GROUPS
+    for (label, methods) in groups
         push!(figs, _plot_trajectory_grid(runs, coords, xlabel, ylabel,
-            "$title — $(_group_title(label))", _suffix_path(path, label); methods, reference))
+            "$title — $(_group_title(label))", _suffix_path(path, label); methods, colors, reference))
     end
     return figs
 end
