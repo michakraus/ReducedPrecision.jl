@@ -29,14 +29,14 @@ verify_precision(runs)
 reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, hamiltonian;
-    path  = joinpath(plotdir, "double_pendulum_energy_error.png"),
+    path  = joinpath(plotdir, "double_pendulum_energy_error_dt=$(DP.timestep).png"),
     title = "Double Pendulum — Relative Energy Error (Δt = 0.01, t ≤ 10)")
 
 plot_solution_error(runs, reference;
-    path  = joinpath(plotdir, "double_pendulum_solution_error.png"),
+    path  = joinpath(plotdir, "double_pendulum_solution_error_dt=$(DP.timestep).png"),
     title = "Double Pendulum — Solution Error (Δt = 0.01, t ≤ 10, vs. Float64 Gauss(8))")
 
 plot_solution(runs; reference = reference,
-    path   = joinpath(plotdir, "double_pendulum_solution.png"),
+    path   = joinpath(plotdir, "double_pendulum_solution_dt=$(DP.timestep).png"),
     title  = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
     xlabel = "θ₁", ylabel = "θ₂")

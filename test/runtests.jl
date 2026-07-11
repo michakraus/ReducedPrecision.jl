@@ -14,24 +14,27 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
 @testset "ReducedPrecision.jl" begin
 
     @testset "method registry" begin
-        @test length(ALL_METHODS) == 8
+        @test length(ALL_METHODS) == 12
         @test length(GEOMETRIC_METHODS) == 3
         @test length(NONGEOMETRIC_METHODS) == 5
+        @test length(MIDPOINT_METHODS) == 4
         @test all(m.geometric for m in GEOMETRIC_METHODS)
         @test all(!m.geometric for m in NONGEOMETRIC_METHODS)
+        @test all(m.geometric for m in MIDPOINT_METHODS)          # partitioned Gauss(2): all symplectic
 
-        # the two plotting groups partition all methods (no overlap, nothing missing)
+        # the three plotting groups partition all methods (no overlap, nothing missing)
         @test length(EULER_METHODS) == 4
         @test length(OTHER_METHODS) == 4
-        allnames = Set(m.name for m in ALL_METHODS)
-        @test Set(m.name for m in EULER_METHODS) ∪ Set(m.name for m in OTHER_METHODS) == allnames
-        @test isempty(Set(m.name for m in EULER_METHODS) ∩ Set(m.name for m in OTHER_METHODS))
+        groupnames = [Set(m.name for m in EULER_METHODS),
+                      Set(m.name for m in OTHER_METHODS),
+                      Set(m.name for m in MIDPOINT_METHODS)]
+        @test union(groupnames...) == Set(m.name for m in ALL_METHODS)
+        @test sum(length, groupnames) == length(ALL_METHODS)      # pairwise disjoint
 
         # the requested "other" plotting order
         @test [m.name for m in OTHER_METHODS] ==
               ["RK4", "Explicit Midpoint", "Implicit Midpoint", "Crank-Nicolson"]
-        @test first(METHOD_GROUPS).first == "euler"
-        @test last(METHOD_GROUPS).first == "other"
+        @test [g.first for g in METHOD_GROUPS] == ["euler", "other", "midpoint"]
     end
 
     @testset "run_study + precision purity ($T)" for T in PRECISIONS
@@ -121,14 +124,22 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         plot_energy_error(runs, hamiltonian; path = joinpath(dir, "energy.png"), title = "t")
         @test isfile(joinpath(dir, "energy_euler.png"))
         @test isfile(joinpath(dir, "energy_other.png"))
+        @test isfile(joinpath(dir, "energy_midpoint.png"))
 
         plot_solution_error(runs, ref; path = joinpath(dir, "solerr.png"), title = "t")
         @test isfile(joinpath(dir, "solerr_euler.png"))
         @test isfile(joinpath(dir, "solerr_other.png"))
+        @test isfile(joinpath(dir, "solerr_midpoint.png"))
 
         plot_solution(runs; reference = ref, path = joinpath(dir, "traj.png"), title = "t")
         @test isfile(joinpath(dir, "traj_euler.png"))
         @test isfile(joinpath(dir, "traj_other.png"))
+        @test isfile(joinpath(dir, "traj_midpoint.png"))
+
+        # a script-supplied custom group set (as the Lotka–Volterra examples use)
+        plot_energy_error(runs, hamiltonian; path = joinpath(dir, "grp.png"), title = "t",
+            groups = ["mid" => MIDPOINT_METHODS])
+        @test isfile(joinpath(dir, "grp_mid.png"))
     end
 
 end

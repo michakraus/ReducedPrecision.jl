@@ -23,7 +23,7 @@ runs = run_study(make_problem)
 verify_precision(runs)
 
 plot_energy_error(runs, hamiltonian;
-    path  = joinpath(plotdir, "pendulum_longtime_energy_error.png"),
+    path  = joinpath(plotdir, "pendulum_energy_error_dt=$(Δt).png"),
     title = "Pendulum — Relative Energy Error (Δt = 1, t ≤ 10⁴)")
 
 # high-precision reference (Float64, high-order symplectic, same time grid)
@@ -36,11 +36,11 @@ end
 
 if reference !== nothing
     plot_solution_error(runs, reference;
-        path  = joinpath(plotdir, "pendulum_longtime_solution_error.png"),
+        path  = joinpath(plotdir, "pendulum_solution_error_dt=$(Δt).png"),
         title = "Pendulum — Solution Error (Δt = 1, t ≤ 10⁴, vs. Float64 Gauss(8))")
 
     plot_solution(runs; reference = reference,
-        path   = joinpath(plotdir, "pendulum_longtime_solution.png"),
+        path   = joinpath(plotdir, "pendulum_solution_dt=$(Δt).png"),
         title  = "Pendulum — Phase-Space Trajectory (Δt = 1, t ≤ 10⁴)",
         xlabel = "q", ylabel = "p")
 end
