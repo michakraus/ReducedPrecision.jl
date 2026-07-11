@@ -40,6 +40,12 @@ Run any problem with: `julia --project=. scripts/<problem>.jl`.
   page per problem, Findings). Build with `julia --project=docs docs/make.jl` *after* running the
   scripts — `make.jl` copies `plots/*.png` into `docs/src/figures/` (git-ignored) and embeds them.
   Docs depend only on `Documenter` (figures are pre-generated, not built via `@example`).
+- **CI (`.github/workflows/`)** — split by concern:
+  - `CI.yml` runs **only the tests** (matrix: Julia LTS `1.10` + latest stable `1` × ubuntu/macOS/
+    windows; no `arch` pin since macOS runners are arm64). Deps resolve from the registry.
+  - `Documenter.yml` **builds and deploys the docs**: `julia-buildpkg` instantiates the main
+    project, a step runs all eight experiment scripts to (re)generate `plots/`, then
+    `docs/make.jl` embeds them and deploys. Figures are never committed — regenerated each build.
 
 ## Plotting
 
@@ -99,6 +105,13 @@ phase space of the first lattice site.
 
 Solution-error reference: analytic `exact_solution` for the harmonic oscillator; Float64 `Gauss(8)`
 (same grid) for the pendulum, double pendulum and Toda lattice.
+
+**Registry-vs-local caveat.** The registered `GeometricProblems` versions can lag the local
+checkouts. Notably the registered pendulum `hamiltonian` is `(t, q, p)` (parameter-free), while the
+local copy also has a `(t, q, p, params)` method; `energy_error` (via `compute_invariant_error`)
+always passes `params`, so the pendulum scripts wrap it in a `(t, q, p, params) -> hamiltonian(t, q, p)`
+closure (behaviour-identical, since the pendulum is `l = m = g = 1`). If a script errors only on CI
+(registry) but not locally (dev-linked), suspect this kind of signature drift first.
 
 ## Verification results
 
