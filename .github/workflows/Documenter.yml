@@ -20,7 +20,7 @@ jobs:
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - name: Generate experiment figures
         # The docs embed the figures produced by the experiment scripts (written to plots/,
