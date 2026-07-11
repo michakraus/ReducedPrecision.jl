@@ -12,13 +12,16 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
 - **`src/ReducedPrecision.jl`** — reusable pipeline:
   - `PRECISIONS` and a method registry (`GEOMETRIC_METHODS` / `NONGEOMETRIC_METHODS`).
   - `run_study(make_problem)` — runs every method × precision, catching per-run failures.
+    The problem is built once per precision and reused across methods (cheap for HO/pendulum,
+    important for the EulerLagrange-generated double pendulum and Toda lattice).
   - `verify_precision` / `assert_precision` — the precision-purity gate.
   - `energy_error` (reuses `compute_invariant_error`), `solution_error`.
   - `plot_energy_error` / `plot_solution_error` (CairoMakie, one panel per precision).
-- **`scripts/{harmonic_oscillator,pendulum,double_pendulum}.jl`** — short-step drivers
-  (harmonic oscillator & pendulum: Δt = 0.1, t ≤ 100; double pendulum: Δt = 0.01, t ≤ 10).
-- **`scripts/{harmonic_oscillator,pendulum,double_pendulum}_longtime.jl`** — coarse-step /
-  long-horizon drivers (Δt = 1, t ≤ 10 000) for a long-time stability study.
+- **`scripts/{harmonic_oscillator,pendulum,double_pendulum,toda_lattice}.jl`** — short-step
+  drivers (HO & pendulum: Δt = 0.1, t ≤ 100; double pendulum: Δt = 0.01, t ≤ 10; Toda lattice:
+  Δt = 0.1, t ≤ 100).
+- **`scripts/{harmonic_oscillator,pendulum,double_pendulum,toda_lattice}_longtime.jl`** —
+  coarse-step / long-horizon drivers (Δt = 1, t ≤ 10 000) for a long-time stability study.
 - **`plots/`** — generated figures. Each study writes, per method group, an energy-error, a
   solution-error, and a 2D solution (trajectory) figure.
 - Every plot title carries the run parameters, e.g. `… (Δt = 0.1, t ≤ 100)`, so short- and
@@ -65,25 +68,33 @@ Conventions:
 
 The literal method list can't run on one problem form (special `ExplicitEuler`/`ImplicitEuler` are
 ODE-only; `SymplecticEulerA/B` are PODE/HODE-only). Resolution: use the **partitioned form** (PODE
-for oscillator/pendulum, HODE for double pendulum) plus the numerically-identical RK Euler twins
-`ExplicitEulerRK` / `ImplicitEulerRK`, which auto-promote to partitioned RK — so a single problem
-form runs the full geometric-vs-non-geometric comparison.
+for oscillator/pendulum, HODE for double pendulum and Toda lattice) plus the numerically-identical
+RK Euler twins `ExplicitEulerRK` / `ImplicitEulerRK`, which auto-promote to partitioned RK — so a
+single problem form runs the full geometric-vs-non-geometric comparison.
 
 Methods compared:
 - Geometric: Symplectic Euler A, Symplectic Euler B, Implicit Midpoint.
 - Non-geometric: Explicit Euler, Implicit Euler, Explicit Midpoint, Crank-Nicolson, RK4
   (explicit Runge–Kutta of order 4).
 
+Problems (4): harmonic oscillator, pendulum (both have a `::Type{T}` `podeproblem`), double
+pendulum and Toda lattice (both EulerLagrange-generated, no `::Type{T}` — `make_problem(T)`
+hand-builds T-typed `q₀`, `p₀`, timespan, timestep and parameters). Two wrinkles specific to the
+Toda lattice: a lattice size `N` (using `N = 16`, not the default 200, to keep the sweep
+tractable) and a `hamiltonian(t, q, p, params, N)` that takes `N`, so the script passes a
+`(t,q,p,params) -> hamiltonian(…, N)` closure to `plot_energy_error`; its trajectory plot uses the
+phase space of the first lattice site.
+
 Solution-error reference: analytic `exact_solution` for the harmonic oscillator; Float64 `Gauss(8)`
-(same grid) for the pendulum and double pendulum.
+(same grid) for the pendulum, double pendulum and Toda lattice.
 
 ## Verification results
 
-**Precision purity confirmed** — `verify_precision` passes for every successful run across all three
+**Precision purity confirmed** — `verify_precision` passes for every successful run across all four
 problems: `datatype`, `timetype`, and the stored `q`/`p` element types all equal the requested
 precision. No library (GeometricIntegrators/Base, Solutions, Equations, Base, SimpleSolvers)
-implicitly promotes to Float64, including for the double pendulum's hand-built Float16/Float32
-construction.
+implicitly promotes to Float64, including for the double pendulum's and Toda lattice's hand-built
+Float16/Float32 construction.
 
 **Plots show the expected physics:** symplectic methods keep bounded/oscillating energy error while
 explicit Euler blows up and implicit Euler dissipates; the energy-conserving methods' error floor
@@ -114,3 +125,8 @@ All runs are wrapped so a single failure never aborts the study.
   guard). The explicit/symplectic methods blow up almost immediately. The plot documents this
   breakdown rather than a meaningful comparison — the short-step script is the informative one
   for this problem.
+- **Toda lattice:** behaves like the oscillator/pendulum — implicit midpoint / Crank-Nicolson keep
+  energy bounded (~1e-5) while explicit midpoint and RK4 drift; the Gauss(8) reference converges
+  even at Δt = 1, so the full plot set is produced. In Float16 the two implicit methods fail on the
+  long-horizon time-grid saturation; the short scenario runs every method at every precision (the
+  bounded bump initial data keeps the exponentials well-behaved).

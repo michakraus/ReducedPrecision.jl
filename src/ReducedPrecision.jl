@@ -97,8 +97,8 @@ per run so a single failure does not abort the sweep. Returns a `Vector{Run}`.
 function run_study(make_problem; methods = ALL_METHODS, precisions = PRECISIONS)
     runs = Run[]
     for T in precisions
-        for spec in methods
-            prob = make_problem(T)
+        prob = make_problem(T)          # built once per precision and reused across methods
+        for spec in methods             # (the problem is immutable input to `integrate`)
             sol = nothing
             err = nothing
             try
