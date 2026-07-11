@@ -25,6 +25,7 @@ The implementation is split into logical units:
 module ReducedPrecision
 
 using GeometricIntegrators
+using GeometricIntegratorsBase: Solution, solutionstep, current
 using GeometricSolutions
 using GeometricBase
 using GeometricEquations: parameters
@@ -32,7 +33,7 @@ using CairoMakie
 
 export PRECISIONS, MethodSpec, GEOMETRIC_METHODS, NONGEOMETRIC_METHODS, ALL_METHODS
 export EULER_METHODS, OTHER_METHODS, METHOD_GROUPS
-export Run, run_study, assert_precision, verify_precision
+export Run, run_study, integrate_bounded, assert_precision, verify_precision
 export energy_error, solution_error, timevalues
 export plot_energy_error, plot_solution_error, plot_solution
 

@@ -90,6 +90,29 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         @test runs[1].error !== nothing
     end
 
+    @testset "divergence guard" begin
+        # a coarse oscillator (Δt = 1) makes explicit Euler blow up while the symplectic
+        # methods stay bounded
+        make_coarse(::Type{T}) where {T} =
+            podeproblem(T; timespan = (T(0.0), T(100.0)), timestep = T(1.0))
+        runs = run_study(make_coarse; precisions = (Float64,), bound = 1e3)
+
+        ee = runof(runs, "Explicit Euler")
+        @test ee.sol !== nothing
+        @test ee.diverged !== nothing          # guard tripped
+        @test 0 < ee.diverged < 100            # stopped before the end
+        @test all(isnan, Array(ee.sol.q)[:, end])   # tail blanked with NaN after divergence
+
+        sea = runof(runs, "Symplectic Euler A")
+        @test sea.diverged === nothing         # symplectic stays bounded
+        @test all(isfinite, Array(sea.sol.q))
+
+        # disabling the magnitude bound lets the same explicit-Euler run proceed to the end
+        runs_nobound = run_study(make_coarse;
+            methods = [ee.method], precisions = (Float64,), bound = nothing)
+        @test runs_nobound[1].diverged === nothing
+    end
+
     @testset "plotting writes both group figures" begin
         runs = run_study(make_ho)                    # all precisions
         ref = exact_solution(make_ho(Float64))

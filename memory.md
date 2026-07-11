@@ -17,7 +17,12 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
     (`EULER_METHODS` / `OTHER_METHODS` / `METHOD_GROUPS`).
   - `study.jl` — the `Run` type and `run_study(make_problem)` (runs every method × precision,
     catching per-run failures; the problem is built once per precision and reused across methods —
-    important for the EulerLagrange-generated double pendulum and Toda lattice).
+    important for the EulerLagrange-generated double pendulum and Toda lattice). Integration goes
+    through `integrate_bounded` (step-by-step, replicating GeometricIntegrators' own loop, so
+    results match `integrate` for well-behaved runs) with a **divergence guard**: if the state
+    goes non-finite or exceeds `bound` (default `1e3`) it stops early and NaN-fills the tail, so
+    runaway (typically non-convergent implicit / coarse-step explicit) runs don't waste the rest of
+    the sweep or pollute the plots. `run.diverged` records the stop step; `nothing` if bounded.
   - `diagnostics.jl` — `verify_precision` / `assert_precision` (purity gate), `timevalues`,
     `energy_error` (reuses `compute_invariant_error`), `solution_error`.
   - `plotting.jl` — `plot_energy_error` / `plot_solution_error` / `plot_solution` (CairoMakie).

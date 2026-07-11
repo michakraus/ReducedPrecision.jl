@@ -33,7 +33,11 @@ function verify_precision(runs)
             continue
         end
         assert_precision(run.prob, run.sol, run.precision)
-        println("  [ ok ] $(run.method.name) @ $(run.precision)")
+        if run.diverged === nothing
+            println("  [ ok ] $(run.method.name) @ $(run.precision)")
+        else
+            println("  [ ok ] $(run.method.name) @ $(run.precision) (diverged at step $(run.diverged); stopped)")
+        end
     end
     println("Precision verification passed for all successful runs.")
     return nothing
