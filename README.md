@@ -22,7 +22,7 @@ The methods compared are:
 
 - **geometric:** symplectic Euler A/B and the implicit midpoint rule;
 - **non-geometric:** explicit Euler, implicit Euler, explicit midpoint, Crank–Nicolson, and RK4;
-- **partitioned Gauss(2) midpoint variants:** four algebraically-equivalent forms of the 2-stage
+- **partitioned Gauss(2) variants:** four algebraically-equivalent forms of the 2-stage
   Gauss rule (symplectic-by-construction vs. by-duplication, with/without the rounding-compensation
   coefficients `â, b̂, ĉ`), isolating implementation-detail effects on energy conservation.
 
@@ -51,7 +51,7 @@ julia --project=. scripts/harmonic_oscillator_longtime.jl # coarse: Δt = 1,  t 
 #     lotka_volterra_2d, and lotka_volterra_4d
 ```
 
-Output figure filenames encode the timestep (e.g. `…_dt=0.1_…`), so a problem's two scenarios are
+Output figure filenames encode the timestep (e.g. `…_dt_0.1_…`), so a problem's two scenarios are
 distinguished by `Δt`.
 
 The reusable pipeline (`run_study`, `verify_precision`, `energy_error`, `solution_error`, and the

@@ -11,22 +11,23 @@ function _find_run(runs, name, T)
     return nothing
 end
 
-# Colour-blind-safe palette (Wong 8 + four Tol muted colours), one colour per method. Twelve
-# entries cover the default groups (Euler + other + midpoint = 12 methods); shorter method sets
-# (e.g. the Lotka–Volterra variational comparison) simply use a prefix of the palette.
-const _PALETTE = ["#0072B2", "#E69F00", "#009E73", "#D55E00",
-                  "#56B4E9", "#CC79A7", "#F0E442", "#999999",
-                  "#882255", "#44AA99", "#332288", "#661100"]
+# Wong colour-blind-safe palette, ordered for maximum contrast between the first few entries.
+const _PALETTE = ["#0072B2", "#D55E00", "#009E73", "#CC79A7",
+                  "#E69F00", "#56B4E9", "#F0E442", "#999999"]
 const _REFERENCE_COLOR = :black
 
-# Colours are assigned by a method's position in the flattened list of `groups`, so a given set
-# of plotting groups colours its methods consistently across all its figures.
+# Colours are assigned by a method's position *within its group*, so that each figure (one per
+# group) uses the high-contrast leading palette entries. Every group is plotted as a separate
+# figure and a method appears in only one group, so this maximises in-figure distinguishability
+# (important for the four near-coincident Gauss(2) variants) without any cross-figure clash.
 function _method_colors(groups)
-    specs = MethodSpec[]
-    for (_, methods) in groups, m in methods
-        any(s -> s.name == m.name, specs) || push!(specs, m)
+    colors = Dict{String,String}()
+    for (_, methods) in groups
+        for (i, m) in enumerate(methods)
+            colors[m.name] = _PALETTE[mod1(i, length(_PALETTE))]
+        end
     end
-    Dict(m.name => _PALETTE[mod1(i, length(_PALETTE))] for (i, m) in enumerate(specs))
+    return colors
 end
 
 # Insert a suffix before the file extension, e.g. "foo.png" -> "foo_euler.png".
@@ -200,7 +201,7 @@ end
 
 Plot the relative energy error over time, one panel per precision, methods overlaid
 (geometric = solid, non-geometric = dashed). One figure is written per entry in `groups`,
-with the group label appended to `path` (e.g. `_euler`, `_other`, `_midpoint`).
+with the group label appended to `path` (e.g. `_euler`, `_other`, `_gauss2`).
 """
 function plot_energy_error(runs, hamiltonian; path, title, groups = METHOD_GROUPS)
     colors = _method_colors(groups)
@@ -217,7 +218,7 @@ end
 
 Plot the state solution error over time versus `reference`, one panel per precision. One
 figure is written per entry in `groups`, with the group label appended to `path` (e.g.
-`_euler`, `_other`, `_midpoint`).
+`_euler`, `_other`, `_gauss2`).
 """
 function plot_solution_error(runs, reference; path, title, groups = METHOD_GROUPS)
     colors = _method_colors(groups)
@@ -238,7 +239,7 @@ non-geometric = dashed). `coords(sol)` returns the `(xs, ys)` to plot — by def
 `(q, p)` for a one-degree-of-freedom system and configuration space `(q₁, q₂)` otherwise. When
 `reference` is given, the axes are fitted to the reference trajectory so runaway methods are
 clipped. One figure is written per entry in `groups`, with the group label appended to `path`
-(e.g. `_euler`, `_other`, `_midpoint`).
+(e.g. `_euler`, `_other`, `_gauss2`).
 """
 function plot_solution(runs; path, title, reference = nothing,
         coords = _default_coords, xlabel = "q", ylabel = "p", groups = METHOD_GROUPS)

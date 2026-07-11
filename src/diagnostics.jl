@@ -73,14 +73,24 @@ end
 """
     solution_error(sol, reference) -> Vector{Float64}
 
-Euclidean norm of the state error `‖(qₙ,pₙ) − (qₙ,pₙ)_ref‖` at each time step, comparing
-index by index against `reference` (which must share the same time grid). Both solutions
-are materialized to `Float64` before comparison, so `reference` may be at a different
-precision than `sol` (e.g. a Float64 high-order reference).
+Euclidean norm of the state error `‖(qₙ,pₙ) − (qₙ,pₙ)_ref‖` at each time step. Both solutions
+are materialized to `Float64` before comparison, so `reference` may be at a different precision
+than `sol` (e.g. a Float64 high-order reference). If `reference` was integrated on a **finer**
+time grid that refines `sol`'s grid (an integer number of reference steps per solution step,
+sharing `t₀`), it is subsampled onto `sol`'s grid before the index-by-index comparison — this is
+how the coarse-step scenarios compare against a reference computed at the fine step.
 """
 function solution_error(sol, reference)
     q  = Float64.(Array(sol.q));       p  = Float64.(Array(sol.p))
     qr = Float64.(Array(reference.q)); pr = Float64.(Array(reference.p))
+    nsol = size(q, 2); nref = size(qr, 2)
+    if nref > nsol
+        # reference on a finer grid: pick the nsol evenly-spaced points (endpoints included) that
+        # line up with the solution's output times. Robust to the ±1-step ambiguity from a
+        # non-exact fine Δt (e.g. 0.1 in Float64).
+        idx = round.(Int, range(1, nref; length = nsol))
+        qr = qr[:, idx]; pr = pr[:, idx]
+    end
     @assert size(q, 2) == size(qr, 2) "solution and reference have different lengths"
     n = size(q, 2)
     return Float64[

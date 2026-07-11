@@ -25,7 +25,7 @@ non-geometric.
 | Crank–Nicolson     | non-geometric | 2 | trapezoidal rule |
 | RK4                | non-geometric | 4 | explicit Runge–Kutta |
 
-### Partitioned Gauss(2) midpoint variants
+### Partitioned Gauss(2) variants
 
 A third comparison group holds four flavours of the 2-stage Gauss (partitioned midpoint) rule that
 are algebraically the same method but differ in implementation detail:
@@ -99,7 +99,7 @@ Each problem is run in two scenarios, a fine short-horizon run and a coarser one
   double pendulum uses `Δt = 0.1`, `t ≤ 1000`; the Lotka–Volterra problems use `Δt = 0.1`,
   `t ≤ 100`.
 
-The output figure filenames encode the timestep (e.g. `…_dt=0.1_…`), so the two scenarios of a
+The output figure filenames encode the timestep (e.g. `…_dt_0.1_…`), so the two scenarios of a
 problem are distinguished by `Δt` rather than by a "longtime" label.
 
 ## Type-purity verification
@@ -121,14 +121,17 @@ which proves that no library in the stack silently promotes to `Float64`. Integr
 ## Error metrics
 
 * **Relative energy error** `|(H(qₙ, pₙ) − H₀) / H₀|`, computed in the run's own precision.
-* **Solution error** — the Euclidean norm of the state difference against the reference solution on
-  the same time grid.
+* **Solution error** — the Euclidean norm of the state difference against the reference solution.
+  For the problems without an analytic solution (all but the harmonic oscillator), the coarse-step
+  scenarios compute the Float64 `Gauss(8)` reference at the **fine** step (the short scenario's
+  `Δt`) and subsample it onto the coarse output grid, so the reference is accurate independent of
+  the coarse step. (The short scenarios' reference already uses the fine step, being run at it.)
 
 ## Plotting conventions
 
 * Every figure has **one panel per precision** (Float16 / Float32 / Float64) and is produced once
   per method group. The four Hamiltonian problems use three groups — **Euler** (`_euler`), **other**
-  (`_other`), and the **partitioned Gauss(2)** midpoint variants (`_midpoint`); the Lotka–Volterra
+  (`_other`), and the **partitioned Gauss(2)** variants (`_gauss2`); the Lotka–Volterra
   problems use a single **variational** group (`_variational`). Scripts pass their group set to the
   plotting routines, which colour methods consistently within it.
 * Error plots use a **shared logarithmic y-axis** across all three panels, with the upper limit

@@ -16,13 +16,14 @@ of the other examples **do not apply**. The comparison here is instead between f
 - **CMDVI** — the continuous midpoint degenerate variational integrator.
 
 There is no closed-form solution; the solution error is measured against a Float64 `Gauss(8)`
-reference on the same time grid. All four methods are type-pure at every precision.
+reference (in the coarse scenario computed at the fine step and subsampled to the output grid). All
+four methods are type-pure at every precision.
 
 ## Short scenario (Δt = 0.01, t ≤ 10)
 
 ### Energy error
 
-![Energy error, variational integrators](figures/lotka_volterra_2d_energy_error_dt=0.01_variational.png)
+![Energy error, variational integrators](figures/lotka_volterra_2d_energy_error_dt_0.01_variational.png)
 
 At Float32 and Float64 all four midpoint variants conserve energy well and trace visibly different
 fine structure — CMDVI in particular follows a distinct curve. At **Float16** the `VPRK` and `PMVI`
@@ -31,13 +32,13 @@ implicit midpoint and CMDVI still run.
 
 ### Configuration-space trajectory
 
-![Trajectory, variational integrators](figures/lotka_volterra_2d_solution_dt=0.01_variational.png)
+![Trajectory, variational integrators](figures/lotka_volterra_2d_solution_dt_0.01_variational.png)
 
 ## Coarse scenario (Δt = 0.1, t ≤ 100)
 
-![Energy error, variational integrators](figures/lotka_volterra_2d_energy_error_dt=0.1_variational.png)
+![Energy error, variational integrators](figures/lotka_volterra_2d_energy_error_dt_0.1_variational.png)
 
 At the coarser step and longer horizon the differences between the variational integrators, and the
 effect of precision on their long-time energy behaviour, are accentuated.
 
-![Trajectory, variational integrators](figures/lotka_volterra_2d_solution_dt=0.1_variational.png)
+![Trajectory, variational integrators](figures/lotka_volterra_2d_solution_dt_0.1_variational.png)

@@ -25,7 +25,7 @@ reference. All three methods are type-pure at every precision.
 
 ### Energy error
 
-![Energy error, variational integrators](figures/lotka_volterra_4d_energy_error_dt=0.01_variational.png)
+![Energy error, variational integrators](figures/lotka_volterra_4d_energy_error_dt_0.01_variational.png)
 
 At Float32 and Float64 the three variational integrators conserve energy well; at Float16 the `VPRK`
 and `PMVI` solves fail (NaN directions or log-domain errors from the degenerate Lagrangian), while
@@ -33,10 +33,10 @@ implicit midpoint still runs at the short step.
 
 ### Configuration-space trajectory
 
-![Trajectory, variational integrators](figures/lotka_volterra_4d_solution_dt=0.01_variational.png)
+![Trajectory, variational integrators](figures/lotka_volterra_4d_solution_dt_0.01_variational.png)
 
 ## Coarse scenario (Δt = 0.1, t ≤ 100)
 
-![Energy error, variational integrators](figures/lotka_volterra_4d_energy_error_dt=0.1_variational.png)
+![Energy error, variational integrators](figures/lotka_volterra_4d_energy_error_dt_0.1_variational.png)
 
-![Trajectory, variational integrators](figures/lotka_volterra_4d_solution_dt=0.1_variational.png)
+![Trajectory, variational integrators](figures/lotka_volterra_4d_solution_dt_0.1_variational.png)
