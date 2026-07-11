@@ -30,13 +30,13 @@ reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, hamiltonian;
     path  = joinpath(plotdir, "double_pendulum_energy_error.png"),
-    title = "Double Pendulum — Relative Energy Error")
+    title = "Double Pendulum — Relative Energy Error (Δt = 0.01, t ≤ 10)")
 
 plot_solution_error(runs, reference;
     path  = joinpath(plotdir, "double_pendulum_solution_error.png"),
-    title = "Double Pendulum — Solution Error (vs. Float64 Gauss(8))")
+    title = "Double Pendulum — Solution Error (Δt = 0.01, t ≤ 10, vs. Float64 Gauss(8))")
 
 plot_solution(runs; reference = reference,
     path   = joinpath(plotdir, "double_pendulum_solution.png"),
-    title  = "Double Pendulum — Configuration-Space Trajectory",
+    title  = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
     xlabel = "θ₁", ylabel = "θ₂")

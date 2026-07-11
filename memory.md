@@ -16,11 +16,13 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
   - `energy_error` (reuses `compute_invariant_error`), `solution_error`.
   - `plot_energy_error` / `plot_solution_error` (CairoMakie, one panel per precision).
 - **`scripts/{harmonic_oscillator,pendulum,double_pendulum}.jl`** — short-step drivers
-  (Δt = 0.1, t ≤ 100).
+  (harmonic oscillator & pendulum: Δt = 0.1, t ≤ 100; double pendulum: Δt = 0.01, t ≤ 10).
 - **`scripts/{harmonic_oscillator,pendulum,double_pendulum}_longtime.jl`** — coarse-step /
   long-horizon drivers (Δt = 1, t ≤ 10 000) for a long-time stability study.
 - **`plots/`** — generated figures. Each study writes, per method group, an energy-error, a
   solution-error, and a 2D solution (trajectory) figure.
+- Every plot title carries the run parameters, e.g. `… (Δt = 0.1, t ≤ 100)`, so short- and
+  long-time figures are distinguishable at a glance.
 
 Run any problem with: `julia --project=. scripts/<problem>.jl`.
 
@@ -34,10 +36,12 @@ Three plot types, all sharing the grid layout (one panel per precision):
 
 Conventions:
 - **Method groups.** Every plot function writes *two* files, appending `_euler` / `_other` to
-  the given `path`: the Euler group (`EULER_METHODS` = explicit/implicit Euler + symplectic
-  Euler A/B) and the rest (`OTHER_METHODS` = implicit/explicit midpoint + Crank-Nicolson + RK4).
+  the given `path`: the Euler group (`EULER_METHODS` = symplectic Euler A/B + explicit/implicit
+  Euler) and the rest (`OTHER_METHODS`, in draw/legend order: RK4, Explicit Midpoint, Implicit
+  Midpoint, Crank-Nicolson). The order each group is *listed* is the order methods are drawn and
+  appear in the legend; colours stay tied to the method name, so reordering does not recolour.
   This grouping is orthogonal to the geometric/non-geometric flag, which still sets the line
-  style (geometric = solid, non-geometric = dashed). Colors are globally consistent per method
+  style (geometric = solid, non-geometric = dashed). Colours are globally consistent per method
   (Wong 8-colour palette `_PALETTE`, one entry per method in `ALL_METHODS`).
 - **Legend below.** The legend is a horizontal row beneath the panels (not a side column);
   figure width is `430·np` and height `500`, keeping the per-panel size while making room. On
@@ -45,13 +49,14 @@ Conventions:
 - **Exact x-limits.** Time-series panels fit the x-axis exactly to the problem's `timespan`
   `[t₀, t₁]` (via `timespan(prob)`, not the accumulated grid endpoint, which rounds slightly
   short/long at low precision and would drop the final tick).
-- **Overflow-safe y-limits, capped at 1e5.** Non-geometric energy errors can reach ~1e308
-  (finite), which would both overflow Makie's log autolimit padding to `Inf` and dwarf the
-  scale; `_plot_grid` sets explicit limits with the upper limit capped at **1e5**, so runaway
-  lines are clipped at the top.
-- **Reference trajectory.** `plot_solution` draws the bounded `reference` as a black backdrop in
-  every panel and fits the axes to it, so each method's deviation is visible and runaway methods
-  are clipped to the region of the true solution.
+- **Shared, overflow-safe y-limits, capped at 1e5.** All panels of an error figure share one
+  y-range (`_shared_ylims`, computed from every panel's finite data) so precisions are directly
+  comparable. Non-geometric energy errors can reach ~1e308 (finite), which would both overflow
+  Makie's log autolimit padding to `Inf` and dwarf the scale, so the upper limit is capped at
+  **1e5** and runaway lines are clipped at the top.
+- **Reference trajectory.** `plot_solution` draws the bounded `reference` *first*, as a black
+  backdrop (legend entry "Reference"), so every method lies on top of it; the axes are fitted to
+  the reference so runaway methods are clipped to the region of the true solution.
 - `timevalues` uses the nominal grid `t₀ + n·Δt` (not the stored clock `sol.t`), because the
   low-precision clock saturates at long horizons (Float16: `t + Δt == t` past the representable
   integer range).

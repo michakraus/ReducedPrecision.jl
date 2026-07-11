@@ -60,12 +60,15 @@ const ALL_METHODS = vcat(GEOMETRIC_METHODS, NONGEOMETRIC_METHODS)
 
 # Grouping used for plotting (orthogonal to the geometric/non-geometric classification, which
 # still drives the line style). Plots are produced once per group so each figure stays readable.
-const EULER_METHODS = filter(
-    m -> m.name in ("Symplectic Euler A", "Symplectic Euler B", "Explicit Euler", "Implicit Euler"),
-    ALL_METHODS)
-const OTHER_METHODS = filter(
-    m -> m.name in ("Implicit Midpoint", "Explicit Midpoint", "Crank-Nicolson", "RK4"),
-    ALL_METHODS)
+# The listed order is also the plotting (draw and legend) order within each group; colours stay
+# tied to the method name, so reordering here does not change a method's colour.
+_method_by_name(name) = ALL_METHODS[findfirst(m -> m.name == name, ALL_METHODS)]
+_methods_in_order(names...) = MethodSpec[_method_by_name(n) for n in names]
+
+const EULER_METHODS = _methods_in_order(
+    "Symplectic Euler A", "Symplectic Euler B", "Explicit Euler", "Implicit Euler")
+const OTHER_METHODS = _methods_in_order(
+    "RK4", "Explicit Midpoint", "Implicit Midpoint", "Crank-Nicolson")
 const METHOD_GROUPS = ["euler" => EULER_METHODS, "other" => OTHER_METHODS]
 
 _group_title(label) = label == "euler" ? "Euler methods" : "other methods"
@@ -201,6 +204,14 @@ end
 _poslog(v) = (v > 0 && isfinite(v)) ? v : NaN
 _finite_or_nan(v) = isfinite(v) ? Float64(v) : NaN
 
+# Locate the run for a given method name and precision (nothing if it was not run).
+function _find_run(runs, name, T)
+    for run in runs
+        run.precision === T && run.method.name == name && return run
+    end
+    return nothing
+end
+
 # Wong 8-colour, colour-blind-safe palette (one colour per method in ALL_METHODS).
 const _PALETTE = ["#0072B2", "#E69F00", "#009E73", "#D55E00",
                   "#56B4E9", "#CC79A7", "#F0E442", "#999999"]
@@ -241,27 +252,32 @@ _grid_figure(np, ptitle) = begin
     fig
 end
 
-# Generic grid plot: one panel per precision, one line per method, log-scale y.
+# Shared log-y limits for a whole figure: one range derived from every panel's finite,
+# positive data, with the upper limit capped at 1e5 so runaway (non-geometric) errors are
+# clipped at the top rather than dominating the scale.
+function _shared_ylims(finite_pos)
+    isempty(finite_pos) && return (1e-16, 1e0)
+    lo, hi = extrema(finite_pos)
+    loglo, loghi = log10(lo), log10(hi)
+    pad = 0.05 * max(loghi - loglo, 1) + 0.1
+    return (10.0^(loglo - pad), 10.0^min(loghi + pad, 5))
+end
+
+# Generic grid plot: one panel per precision, one line per method, log-scale y. Methods are
+# drawn (and listed) in the order given by `methods`; every panel shares the same y-limits.
 function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods = ALL_METHODS, precisions = PRECISIONS)
     colors = _method_colors()
-    wanted = Set(m.name for m in methods)
     np = length(precisions)
 
-    fig = _grid_figure(np, ptitle)
-
-    for (j, T) in enumerate(precisions)
-        ax = Axis(fig[1, j];
-            yscale = log10,
-            xlabel = "t",
-            ylabel = j == 1 ? ylabel : "",
-            title  = string(T),
-        )
-        finite_pos = Float64[]
-        xr = nothing
-        for run in runs
-            run.precision === T || continue
-            run.method.name in wanted || continue
-            run.sol === nothing && continue
+    # First pass: collect each panel's (spec, t, y) series and the global finite range.
+    finite_pos = Float64[]
+    xr = nothing
+    panels = Vector{Any}[]
+    for T in precisions
+        series = Any[]
+        for spec in methods
+            run = _find_run(runs, spec.name, T)
+            (run === nothing || run.sol === nothing) && continue
             y = _poslog.(seriesfun(run))
             all(isnan, y) && continue
             append!(finite_pos, filter(isfinite, y))
@@ -269,24 +285,30 @@ function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods = ALL_METHODS
             # representable in every precision), not the accumulated grid endpoint which
             # rounds slightly short/long at low precision.
             xr === nothing && (xr = Float64.(timespan(run.prob)))
-            lines!(ax, timevalues(run.sol), y;
-                color = colors[run.method.name],
-                linestyle = run.method.geometric ? :solid : :dash,
+            push!(series, (spec, timevalues(run.sol), y))
+        end
+        push!(panels, series)
+    end
+
+    yl = _shared_ylims(finite_pos)
+
+    fig = _grid_figure(np, ptitle)
+    for (j, T) in enumerate(precisions)
+        ax = Axis(fig[1, j];
+            yscale = log10,
+            xlabel = "t",
+            ylabel = j == 1 ? ylabel : "",
+            title  = string(T),
+        )
+        for (spec, t, y) in panels[j]
+            lines!(ax, t, y;
+                color = colors[spec.name],
+                linestyle = spec.geometric ? :solid : :dash,
                 linewidth = 2,
             )
         end
-        # Explicit finite y-limits, with the upper limit capped at 1e5 so runaway
-        # (non-geometric) errors are clipped at the top rather than dominating the scale.
-        if isempty(finite_pos)
-            ylims!(ax, 1e-16, 1e0)
-        else
-            lo, hi = extrema(finite_pos)
-            loglo, loghi = log10(lo), log10(hi)
-            pad = 0.05 * max(loghi - loglo, 1) + 0.1
-            ylims!(ax, 10.0^(loglo - pad), 10.0^min(loghi + pad, 5))
-        end
-        # Fit the x-axis exactly to the time interval (no padding).
-        xr !== nothing && xlims!(ax, xr[1], xr[2])
+        ylims!(ax, yl...)                                  # same y-limits for every panel
+        xr !== nothing && xlims!(ax, xr[1], xr[2])         # exact time interval, no padding
     end
 
     _legend_below!(fig, methods, colors, np)
@@ -321,11 +343,11 @@ function _traj_limits(reference, coordsfun)
     return ((xlo - px, xhi + px), (ylo - py, yhi + py))
 end
 
-# Grid of 2D trajectory plots: one panel per precision, one trajectory per method.
+# Grid of 2D trajectory plots: one panel per precision, one trajectory per method (drawn and
+# listed in the order given by `methods`).
 function _plot_trajectory_grid(runs, coordsfun, xlabel, ylabel, ptitle, path;
         methods = ALL_METHODS, precisions = PRECISIONS, reference = nothing)
     colors = _method_colors()
-    wanted = Set(m.name for m in methods)
     np = length(precisions)
     lims = reference === nothing ? nothing : _traj_limits(reference, coordsfun)
 
@@ -333,23 +355,22 @@ function _plot_trajectory_grid(runs, coordsfun, xlabel, ylabel, ptitle, path;
 
     for (j, T) in enumerate(precisions)
         ax = Axis(fig[1, j]; xlabel = xlabel, ylabel = j == 1 ? ylabel : "", title = string(T))
-        # Reference trajectory as a black backdrop, so each method's deviation is visible.
+        # Reference trajectory drawn first, as a black backdrop, so every method lies on top.
         if reference !== nothing
             rx, ry = coordsfun(reference)
             lines!(ax, _finite_or_nan.(rx), _finite_or_nan.(ry);
                 color = _REFERENCE_COLOR, linewidth = 2.5)
         end
-        for run in runs
-            run.precision === T || continue
-            run.method.name in wanted || continue
-            run.sol === nothing && continue
+        for spec in methods
+            run = _find_run(runs, spec.name, T)
+            (run === nothing || run.sol === nothing) && continue
             xs, ys = coordsfun(run.sol)
             xs = _finite_or_nan.(xs)
             ys = _finite_or_nan.(ys)
             (all(isnan, xs) || all(isnan, ys)) && continue
             lines!(ax, xs, ys;
-                color = colors[run.method.name],
-                linestyle = run.method.geometric ? :solid : :dash,
+                color = colors[spec.name],
+                linestyle = spec.geometric ? :solid : :dash,
                 linewidth = 1.5,
             )
         end
@@ -360,7 +381,7 @@ function _plot_trajectory_grid(runs, coordsfun, xlabel, ylabel, ptitle, path;
     end
 
     extra = reference === nothing ? nothing :
-            (LineElement(color = _REFERENCE_COLOR, linewidth = 2.5), "reference")
+            (LineElement(color = _REFERENCE_COLOR, linewidth = 2.5), "Reference")
     _legend_below!(fig, methods, colors, np; extra)
 
     mkpath(dirname(path))

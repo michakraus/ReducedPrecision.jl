@@ -32,13 +32,13 @@ reference = exact_solution(make_problem(Float64))
 
 plot_energy_error(runs, hamiltonian;
     path  = joinpath(plotdir, "harmonic_oscillator_energy_error.png"),
-    title = "Harmonic Oscillator — Relative Energy Error")
+    title = "Harmonic Oscillator — Relative Energy Error (Δt = 0.1, t ≤ 100)")
 
 plot_solution_error(runs, reference;
     path  = joinpath(plotdir, "harmonic_oscillator_solution_error.png"),
-    title = "Harmonic Oscillator — Solution Error (vs. analytic)")
+    title = "Harmonic Oscillator — Solution Error (Δt = 0.1, t ≤ 100, vs. analytic)")
 
 plot_solution(runs; reference = reference,
     path   = joinpath(plotdir, "harmonic_oscillator_solution.png"),
-    title  = "Harmonic Oscillator — Phase-Space Trajectory",
+    title  = "Harmonic Oscillator — Phase-Space Trajectory (Δt = 0.1, t ≤ 100)",
     xlabel = "q", ylabel = "p")
