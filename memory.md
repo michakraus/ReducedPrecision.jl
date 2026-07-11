@@ -29,6 +29,11 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
 
 Run any problem with: `julia --project=. scripts/<problem>.jl`.
 
+- **`docs/`** — Documenter.jl site summarising all experiments and findings (Home, Methodology, a
+  page per problem, Findings). Build with `julia --project=docs docs/make.jl` *after* running the
+  scripts — `make.jl` copies `plots/*.png` into `docs/src/figures/` (git-ignored) and embeds them.
+  Docs depend only on `Documenter` (figures are pre-generated, not built via `@example`).
+
 ## Plotting
 
 Three plot types, all sharing the grid layout (one panel per precision):
