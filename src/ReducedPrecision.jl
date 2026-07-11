@@ -30,7 +30,7 @@ import GeometricIntegratorsBase: initmethod, isimplicit
 using GeometricSolutions
 using GeometricBase
 using GeometricEquations: parameters, GeometricProblem
-using SimpleSolvers: DogLeg
+using SimpleSolvers: DogLeg, Newton
 using RungeKutta: Tableau, PartitionedTableau, SymplecticPartitionedTableau, TableauGauss
 using CairoMakie
 
