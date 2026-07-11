@@ -14,9 +14,9 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
 - **`src/`** — reusable pipeline, split into logical units and stitched together by
   `ReducedPrecision.jl` (usings/exports/`include`s only):
   - `methods.jl` — `PRECISIONS`, `MethodSpec`, the method registries, and the plotting groups.
-    `ALL_METHODS` (12) = `GEOMETRIC_METHODS` (3) + `NONGEOMETRIC_METHODS` (5) + `MIDPOINT_METHODS`
+    `ALL_METHODS` (12) = `GEOMETRIC_METHODS` (3) + `NONGEOMETRIC_METHODS` (5) + `GAUSS2_METHODS`
     (4 partitioned Gauss(2) variants), grouped for plotting by `METHOD_GROUPS`
-    (`euler` / `other` / `midpoint`). The degenerate-Lagrangian Lotka–Volterra comparison uses
+    (`euler` / `other` / `gauss2`). The degenerate-Lagrangian Lotka–Volterra comparison uses
     separate sets `LV2D_METHODS` (4, incl. `CMDVI`) / `LV4D_METHODS` (3, no `CMDVI`) and
     `LV2D_GROUPS` / `LV4D_GROUPS` (a single `variational` group each). The `GaussVPRK` wrapper
     rebuilds `VPRK(Gauss(1))` at the run precision (its own `initmethod` otherwise bakes in Float64).
@@ -42,7 +42,7 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
   pendulum Δt = 0.1, t ≤ 1000; Lotka–Volterra Δt = 0.1, t ≤ 100.
 - **`plots/`** — generated figures. Each study writes, per method group, an energy-error, a
   solution-error, and a 2D solution (trajectory) figure. **Filenames encode the timestep**
-  (`…_dt=<Δt>_<group>.png`), so a problem's two scenarios are distinguished by `Δt` (not a
+  (`…_dt_<Δt>_<group>.png`), so a problem's two scenarios are distinguished by `Δt` (not a
   "longtime" label). Every plot title also carries the run parameters, e.g. `… (Δt = 0.1, t ≤ 100)`.
 
 Run any problem with: `julia --project=. scripts/<problem>.jl`.
@@ -69,12 +69,12 @@ Three plot types, all sharing the grid layout (one panel per precision):
 Conventions:
 - **Method groups.** Each plot function takes a `groups` kwarg (default `METHOD_GROUPS`) and writes
   one file per group, appending the group label to `path`. The Hamiltonian problems use three
-  groups — `_euler`, `_other`, `_midpoint` (partitioned Gauss(2) variants) — and the Lotka–Volterra
+  groups — `_euler`, `_other`, `_gauss2` (partitioned Gauss(2) variants) — and the Lotka–Volterra
   scripts pass their own single `_variational` group. The order each group is *listed* is the draw/
   legend order. Grouping is orthogonal to the geometric/non-geometric flag, which sets the line
-  style (geometric = solid, non-geometric = dashed). Colours are assigned by a method's position in
-  the flattened `groups` list (12-colour palette `_PALETTE`), so a given group set colours its
-  methods consistently across its figures.
+  style (geometric = solid, non-geometric = dashed). Colours are assigned by each method's position
+  *within its group* from a high-contrast palette (`_PALETTE`), so every per-group figure uses the
+  vivid leading colours — keeping the four near-coincident Gauss(2) variants distinguishable.
 - **Legend below.** The legend is a horizontal row beneath the panels (not a side column);
   figure width is `430·np` and height `500`, keeping the per-panel size while making room. On
   the solution plots the legend also carries a `reference` entry.
@@ -104,7 +104,7 @@ single problem form runs the full geometric-vs-non-geometric comparison.
 Methods compared (Hamiltonian problems):
 - Geometric: Symplectic Euler A, Symplectic Euler B, Implicit Midpoint.
 - Non-geometric: Explicit Euler, Implicit Euler, Explicit Midpoint, Crank-Nicolson, RK4.
-- Partitioned Gauss(2) midpoint variants (`MIDPOINT_METHODS`): `PartitionedTableau(Gauss(2))`,
+- Partitioned Gauss(2) variants (`GAUSS2_METHODS`): `PartitionedTableau(Gauss(2))`,
   `SymplecticPartitionedTableau(Gauss(2))`, and both with the compensation coefficients `â,b̂,ĉ`
   zeroed — all IPRK, built at the run precision via a `tableau(method, T)` accessor.
 
@@ -121,7 +121,10 @@ trajectory plot uses the first lattice site's phase space. The Lotka–Volterra 
 degenerate Lagrangian (LODE) systems, so only variational / implicit-midpoint methods apply.
 
 Solution-error reference: analytic `exact_solution` for the harmonic oscillator; Float64 `Gauss(8)`
-(same grid) for all others.
+for all others. For the non-analytic problems the **coarse** scenarios compute the reference at the
+**fine** step (`Δt_ref` = the short scenario's Δt, via a `make_reference(T)` closure) and
+`solution_error` subsamples it onto the coarse grid (`round.(Int, range(1, nref; length=nsol))`),
+so the reference is trustworthy independent of the coarse step.
 
 **Registry-vs-local caveat (resolved).** The registered `GeometricProblems` can lag the local
 checkouts, causing signature drift. This bit the pendulum: registered ≤ 0.6.24 had only a
@@ -176,7 +179,7 @@ All runs are wrapped so a single failure never aborts the study.
 
 ## Comparison-group findings
 
-- **Partitioned Gauss(2) midpoint variants:** the four algebraically-equivalent forms coincide on
+- **Partitioned Gauss(2) variants:** the four algebraically-equivalent forms coincide on
   the linear harmonic oscillator but separate on the nonlinear problems, where the
   symplectic-vs-duplicated tableau construction and the compensation coefficients `â,b̂,ĉ` leave a
   visible imprint on the energy-error fine structure (most so at Float64).

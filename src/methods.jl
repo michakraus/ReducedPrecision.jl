@@ -39,9 +39,9 @@ const NONGEOMETRIC_METHODS = MethodSpec[
     MethodSpec("RK4",               RK4(),              false),
 ]
 
-# Partitioned Gauss(2) midpoint-rule variants (the third comparison group). All four are
-# implicit partitioned Runge–Kutta (IPRK) methods built from the 2-stage Gauss tableau. They
-# are all symplectic and differ only in implementation details:
+# Partitioned Gauss(2) variants (the third comparison group). All four are implicit partitioned
+# Runge–Kutta (IPRK) methods built from the 2-stage Gauss tableau. They are all symplectic and
+# differ only in implementation details:
 #   * `PartitionedTableau(Gauss(2))`            — the partitioned tableau formed by duplicating
 #                                                  the Gauss tableau for q and p;
 #   * `SymplecticPartitionedTableau(Gauss(2))`  — the p-tableau is the symplectic conjugate of
@@ -68,11 +68,11 @@ GeometricBase.tableau(::GaussPRK0,  ::Type{T} = Float64) where {T} = _zero_hats(
 GeometricBase.tableau(::GaussSPRK0, ::Type{T} = Float64) where {T} = _zero_hats(SymplecticPartitionedTableau(TableauGauss(T, 2)))
 
 """
-Partitioned Gauss(2) midpoint-rule variants (all symplectic). They differ only in
-implementation details: symplectic-by-construction (`SPRK`) versus by-duplication (`PRK`),
-and whether the rounding-error compensation coefficients â/b̂/ĉ are retained or zeroed.
+Partitioned Gauss(2) variants (all symplectic). They differ only in implementation details:
+symplectic-by-construction (`SPRK`) versus by-duplication (`PRK`), and whether the rounding-error
+compensation coefficients â/b̂/ĉ are retained or zeroed.
 """
-const MIDPOINT_METHODS = MethodSpec[
+const GAUSS2_METHODS = MethodSpec[
     MethodSpec("PRK Gauss(2)",            GaussPRK(),   true),
     MethodSpec("SPRK Gauss(2)",           GaussSPRK(),  true),
     MethodSpec("PRK Gauss(2), â=b̂=ĉ=0",  GaussPRK0(),  true),
@@ -84,7 +84,7 @@ All methods (geometric, then non-geometric, then the partitioned Gauss(2) varian
 This ordering is used as the default `methods` set for `run_study` sweeps.
 (Plot colours are assigned from the plotting `groups`, not from this list.)
 """
-const ALL_METHODS = vcat(GEOMETRIC_METHODS, NONGEOMETRIC_METHODS, MIDPOINT_METHODS)
+const ALL_METHODS = vcat(GEOMETRIC_METHODS, NONGEOMETRIC_METHODS, GAUSS2_METHODS)
 
 _method_by_name(name) = ALL_METHODS[findfirst(m -> m.name == name, ALL_METHODS)]
 _methods_in_order(names...) = MethodSpec[_method_by_name(n) for n in names]
@@ -110,9 +110,9 @@ per group. Scripts may pass their own `groups` to the plotting routines (e.g. th
 examples use a single variational-integrator group).
 """
 const METHOD_GROUPS = [
-    "euler"    => EULER_METHODS,
-    "other"    => OTHER_METHODS,
-    "midpoint" => MIDPOINT_METHODS,
+    "euler"  => EULER_METHODS,
+    "other"  => OTHER_METHODS,
+    "gauss2" => GAUSS2_METHODS,
 ]
 
 # --- Lotka–Volterra (degenerate Lagrangian) variational-integrator comparison ----------------
@@ -160,7 +160,7 @@ const LV4D_GROUPS = ["variational" => LV4D_METHODS]
 const _GROUP_TITLES = Dict(
     "euler"       => "Euler methods",
     "other"       => "other methods",
-    "midpoint"    => "Gauss(2) midpoint variants",
+    "gauss2"      => "Gauss(2) variants",
     "variational" => "implicit-midpoint variational integrators",
 )
 _group_title(label) = get(_GROUP_TITLES, label, label)

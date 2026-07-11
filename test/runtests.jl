@@ -17,24 +17,24 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         @test length(ALL_METHODS) == 12
         @test length(GEOMETRIC_METHODS) == 3
         @test length(NONGEOMETRIC_METHODS) == 5
-        @test length(MIDPOINT_METHODS) == 4
+        @test length(GAUSS2_METHODS) == 4
         @test all(m.geometric for m in GEOMETRIC_METHODS)
         @test all(!m.geometric for m in NONGEOMETRIC_METHODS)
-        @test all(m.geometric for m in MIDPOINT_METHODS)          # partitioned Gauss(2): all symplectic
+        @test all(m.geometric for m in GAUSS2_METHODS)          # partitioned Gauss(2): all symplectic
 
         # the three plotting groups partition all methods (no overlap, nothing missing)
         @test length(EULER_METHODS) == 4
         @test length(OTHER_METHODS) == 4
         groupnames = [Set(m.name for m in EULER_METHODS),
                       Set(m.name for m in OTHER_METHODS),
-                      Set(m.name for m in MIDPOINT_METHODS)]
+                      Set(m.name for m in GAUSS2_METHODS)]
         @test union(groupnames...) == Set(m.name for m in ALL_METHODS)
         @test sum(length, groupnames) == length(ALL_METHODS)      # pairwise disjoint
 
         # the requested "other" plotting order
         @test [m.name for m in OTHER_METHODS] ==
               ["RK4", "Explicit Midpoint", "Implicit Midpoint", "Crank-Nicolson"]
-        @test [g.first for g in METHOD_GROUPS] == ["euler", "other", "midpoint"]
+        @test [g.first for g in METHOD_GROUPS] == ["euler", "other", "gauss2"]
     end
 
     @testset "run_study + precision purity ($T)" for T in PRECISIONS
@@ -77,6 +77,13 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         # solution error vs the analytic reference: 0 at t₀, finite
         @test se[1] ≈ 0.0 atol = 1e-12
         @test all(isfinite, se)
+
+        # a finer-grid reference (here Δt/2) is subsampled onto the solution's coarser grid
+        make_ho_fine(::Type{T}) where {T} = podeproblem(T; timespan = (T(0.0), T(1.0)), timestep = T(0.05))
+        se_fine = solution_error(sea.sol, exact_solution(make_ho_fine(Float64)))
+        @test length(se_fine) == length(tv)          # subsampled to the solution grid
+        @test se_fine[1] ≈ 0.0 atol = 1e-12
+        @test all(isfinite, se_fine)
 
         # explicit Euler drifts more in energy than symplectic Euler by the final step
         ee_exp = energy_error(runof(runs, "Explicit Euler").sol, hamiltonian)
@@ -124,21 +131,21 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         plot_energy_error(runs, hamiltonian; path = joinpath(dir, "energy.png"), title = "t")
         @test isfile(joinpath(dir, "energy_euler.png"))
         @test isfile(joinpath(dir, "energy_other.png"))
-        @test isfile(joinpath(dir, "energy_midpoint.png"))
+        @test isfile(joinpath(dir, "energy_gauss2.png"))
 
         plot_solution_error(runs, ref; path = joinpath(dir, "solerr.png"), title = "t")
         @test isfile(joinpath(dir, "solerr_euler.png"))
         @test isfile(joinpath(dir, "solerr_other.png"))
-        @test isfile(joinpath(dir, "solerr_midpoint.png"))
+        @test isfile(joinpath(dir, "solerr_gauss2.png"))
 
         plot_solution(runs; reference = ref, path = joinpath(dir, "traj.png"), title = "t")
         @test isfile(joinpath(dir, "traj_euler.png"))
         @test isfile(joinpath(dir, "traj_other.png"))
-        @test isfile(joinpath(dir, "traj_midpoint.png"))
+        @test isfile(joinpath(dir, "traj_gauss2.png"))
 
         # a script-supplied custom group set (as the Lotka–Volterra examples use)
         plot_energy_error(runs, hamiltonian; path = joinpath(dir, "grp.png"), title = "t",
-            groups = ["mid" => MIDPOINT_METHODS])
+            groups = ["mid" => GAUSS2_METHODS])
         @test isfile(joinpath(dir, "grp_mid.png"))
     end
 

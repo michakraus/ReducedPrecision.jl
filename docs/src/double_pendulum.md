@@ -10,9 +10,9 @@ plots use the **configuration space** ``(\theta_1, \theta_2)``.
 
 ### Energy error
 
-![Energy error, Euler methods](figures/double_pendulum_energy_error_dt=0.01_euler.png)
+![Energy error, Euler methods](figures/double_pendulum_energy_error_dt_0.01_euler.png)
 
-![Energy error, other methods](figures/double_pendulum_energy_error_dt=0.01_other.png)
+![Energy error, other methods](figures/double_pendulum_energy_error_dt_0.01_other.png)
 
 At Float32 and Float64 all methods run and the usual ordering holds — implicit midpoint and
 Crank–Nicolson keep the energy error far below the Euler methods. At **Float16 the three implicit
@@ -22,9 +22,9 @@ Switching the nonlinear solver from `Newton` to the trust-region `DogLeg` (the d
 not rescue these Float16 solves — the breakdown is a genuine property of half precision, not of the
 solver.
 
-### Partitioned Gauss(2) midpoint variants
+### Partitioned Gauss(2) variants
 
-![Energy error, Gauss(2) midpoint variants](figures/double_pendulum_energy_error_dt=0.01_midpoint.png)
+![Energy error, Gauss(2) variants](figures/double_pendulum_energy_error_dt_0.01_gauss2.png)
 
 The four partitioned-Gauss(2) variants share the fate of the other implicit methods at Float16 but
 are informative at Float32/Float64, where the symplectic-vs-duplicated tableau choice and the
@@ -32,18 +32,18 @@ rounding-compensation coefficients ``â, b̂, ĉ`` produce visibly different ene
 
 ### Configuration-space trajectory
 
-![Configuration-space trajectory, other methods](figures/double_pendulum_solution_dt=0.01_other.png)
+![Configuration-space trajectory, other methods](figures/double_pendulum_solution_dt_0.01_other.png)
 
 The methods track the reference until the chaotic divergence sets in; at Float16 the surviving
 methods depart from the reference noticeably earlier.
 
 ## Coarse scenario (Δt = 0.1, t ≤ 1000)
 
-![Energy error, Euler methods](figures/double_pendulum_energy_error_dt=0.1_euler.png)
+![Energy error, Euler methods](figures/double_pendulum_energy_error_dt_0.1_euler.png)
 
-![Energy error, other methods](figures/double_pendulum_energy_error_dt=0.1_other.png)
+![Energy error, other methods](figures/double_pendulum_energy_error_dt_0.1_other.png)
 
-![Energy error, Gauss(2) midpoint variants](figures/double_pendulum_energy_error_dt=0.1_midpoint.png)
+![Energy error, Gauss(2) variants](figures/double_pendulum_energy_error_dt_0.1_gauss2.png)
 
 At the ten-times-coarser step `Δt = 0.1` the chaotic double pendulum is badly under-resolved and the
 relative energy error is of order one for essentially every method. Counter-intuitively it is the

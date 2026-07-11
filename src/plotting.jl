@@ -11,22 +11,17 @@ function _find_run(runs, name, T)
     return nothing
 end
 
-# Colour-blind-safe palette (Wong 8 + four Tol muted colours), one colour per method. Twelve
-# entries cover the default groups (Euler + other + midpoint = 12 methods); shorter method sets
-# (e.g. the Lotka–Volterra variational comparison) simply use a prefix of the palette.
-const _PALETTE = ["#0072B2", "#E69F00", "#009E73", "#D55E00",
-                  "#56B4E9", "#CC79A7", "#F0E442", "#999999",
-                  "#882255", "#44AA99", "#332288", "#661100"]
+# Wong colour-blind-safe palette, ordered for maximum contrast between the first few entries.
+const _PALETTE = ["#0072B2", "#D55E00", "#009E73", "#CC79A7",
+                  "#E69F00", "#56B4E9", "#F0E442", "#999999"]
 const _REFERENCE_COLOR = :black
 
-# Colours are assigned by a method's position in the flattened list of `groups`, so a given set
-# of plotting groups colours its methods consistently across all its figures.
-function _method_colors(groups)
-    specs = MethodSpec[]
-    for (_, methods) in groups, m in methods
-        any(s -> s.name == m.name, specs) || push!(specs, m)
-    end
-    Dict(m.name => _PALETTE[mod1(i, length(_PALETTE))] for (i, m) in enumerate(specs))
+# Colour map for a single group's `methods`, assigned by position from the high-contrast leading
+# palette entries. Each group is a separate figure and is coloured independently, which uses the
+# vivid leading colours in every figure (important for the four near-coincident Gauss(2) variants)
+# and avoids any cross-group name collision.
+function _method_colors(methods)
+    Dict(m.name => _PALETTE[mod1(i, length(_PALETTE))] for (i, m) in enumerate(methods))
 end
 
 # Insert a suffix before the file extension, e.g. "foo.png" -> "foo_euler.png".
@@ -200,14 +195,14 @@ end
 
 Plot the relative energy error over time, one panel per precision, methods overlaid
 (geometric = solid, non-geometric = dashed). One figure is written per entry in `groups`,
-with the group label appended to `path` (e.g. `_euler`, `_other`, `_midpoint`).
+with the group label appended to `path` (e.g. `_euler`, `_other`, `_gauss2`).
 """
 function plot_energy_error(runs, hamiltonian; path, title, groups = METHOD_GROUPS)
-    colors = _method_colors(groups)
     figs = Any[]
     for (label, methods) in groups
         push!(figs, _plot_grid(runs, run -> energy_error(run.sol, hamiltonian),
-            "|ΔH / H₀|", "$title — $(_group_title(label))", _suffix_path(path, label); methods, colors))
+            "|ΔH / H₀|", "$title — $(_group_title(label))", _suffix_path(path, label);
+            methods, colors = _method_colors(methods)))
     end
     return figs
 end
@@ -217,14 +212,14 @@ end
 
 Plot the state solution error over time versus `reference`, one panel per precision. One
 figure is written per entry in `groups`, with the group label appended to `path` (e.g.
-`_euler`, `_other`, `_midpoint`).
+`_euler`, `_other`, `_gauss2`).
 """
 function plot_solution_error(runs, reference; path, title, groups = METHOD_GROUPS)
-    colors = _method_colors(groups)
     figs = Any[]
     for (label, methods) in groups
         push!(figs, _plot_grid(runs, run -> solution_error(run.sol, reference),
-            "‖x − x_ref‖", "$title — $(_group_title(label))", _suffix_path(path, label); methods, colors))
+            "‖x − x_ref‖", "$title — $(_group_title(label))", _suffix_path(path, label);
+            methods, colors = _method_colors(methods)))
     end
     return figs
 end
@@ -238,15 +233,15 @@ non-geometric = dashed). `coords(sol)` returns the `(xs, ys)` to plot — by def
 `(q, p)` for a one-degree-of-freedom system and configuration space `(q₁, q₂)` otherwise. When
 `reference` is given, the axes are fitted to the reference trajectory so runaway methods are
 clipped. One figure is written per entry in `groups`, with the group label appended to `path`
-(e.g. `_euler`, `_other`, `_midpoint`).
+(e.g. `_euler`, `_other`, `_gauss2`).
 """
 function plot_solution(runs; path, title, reference = nothing,
         coords = _default_coords, xlabel = "q", ylabel = "p", groups = METHOD_GROUPS)
-    colors = _method_colors(groups)
     figs = Any[]
     for (label, methods) in groups
         push!(figs, _plot_trajectory_grid(runs, coords, xlabel, ylabel,
-            "$title — $(_group_title(label))", _suffix_path(path, label); methods, colors, reference))
+            "$title — $(_group_title(label))", _suffix_path(path, label);
+            methods, colors = _method_colors(methods), reference))
     end
     return figs
 end

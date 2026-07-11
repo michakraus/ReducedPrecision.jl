@@ -18,7 +18,7 @@ range of symplectic and non-symplectic methods of
 [GeometricIntegrators.jl](https://github.com/JuliaGNI/GeometricIntegrators.jl), and each run in two
 scenarios (a fine short-horizon run and a coarser long-horizon run). The four Hamiltonian problems
 (harmonic oscillator, pendulum, double pendulum, Toda lattice) compare Euler-type methods, higher-
-order Runge–Kutta methods, and a group of partitioned Gauss(2) midpoint variants; the two
+order Runge–Kutta methods, and a group of partitioned Gauss(2) variants; the two
 degenerate-Lagrangian problems (Lotka–Volterra 2D and 4D) compare several flavours of variational
 implicit-midpoint integrator.
 

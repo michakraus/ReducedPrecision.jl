@@ -37,14 +37,14 @@ verify_precision(runs)
 reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, ham; groups = LV4D_GROUPS,
-    path  = joinpath(plotdir, "lotka_volterra_4d_energy_error_dt=$(Δt).png"),
+    path  = joinpath(plotdir, "lotka_volterra_4d_energy_error_dt_$(Δt).png"),
     title = "Lotka–Volterra 4D — Relative Energy Error (Δt = 0.01, t ≤ 10)")
 
 plot_solution_error(runs, reference; groups = LV4D_GROUPS,
-    path  = joinpath(plotdir, "lotka_volterra_4d_solution_error_dt=$(Δt).png"),
+    path  = joinpath(plotdir, "lotka_volterra_4d_solution_error_dt_$(Δt).png"),
     title = "Lotka–Volterra 4D — Solution Error (Δt = 0.01, t ≤ 10, vs. Float64 Gauss(8))")
 
 plot_solution(runs; reference = reference, groups = LV4D_GROUPS,
-    path   = joinpath(plotdir, "lotka_volterra_4d_solution_dt=$(Δt).png"),
+    path   = joinpath(plotdir, "lotka_volterra_4d_solution_dt_$(Δt).png"),
     title  = "Lotka–Volterra 4D — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
     xlabel = "q₁", ylabel = "q₂")

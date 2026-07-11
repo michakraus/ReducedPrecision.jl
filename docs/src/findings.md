@@ -64,7 +64,7 @@ All such failures are caught per run, reported as skips, and never abort the swe
 
 Two further comparison groups isolate finer effects:
 
-* **Partitioned Gauss(2) midpoint variants.** On the Hamiltonian problems, four algebraically
+* **Partitioned Gauss(2) variants.** On the Hamiltonian problems, four algebraically
   equivalent forms of the 2-stage Gauss rule (symplectic-by-construction vs. by-duplication, with
   and without the rounding-compensation coefficients `â, b̂, ĉ`) coincide on the linear harmonic
   oscillator but separate on the nonlinear problems, where the tableau construction and the
