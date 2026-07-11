@@ -4,7 +4,7 @@
 #
 # Each script runs the full method × precision sweep for one problem/scenario, verifies
 # precision purity, and writes its energy-error, solution-error and trajectory figures to
-# plots/ (filenames encode the timestep, e.g. `…_dt=0.1_euler.png`). This regenerates the
+# plots/ (filenames encode the timestep, e.g. `…_dt_0.1_euler.png`). This regenerates the
 # figures independently of the documentation build.
 #
 # Usage:  ./run_all.sh

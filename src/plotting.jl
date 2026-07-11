@@ -16,18 +16,12 @@ const _PALETTE = ["#0072B2", "#D55E00", "#009E73", "#CC79A7",
                   "#E69F00", "#56B4E9", "#F0E442", "#999999"]
 const _REFERENCE_COLOR = :black
 
-# Colours are assigned by a method's position *within its group*, so that each figure (one per
-# group) uses the high-contrast leading palette entries. Every group is plotted as a separate
-# figure and a method appears in only one group, so this maximises in-figure distinguishability
-# (important for the four near-coincident Gauss(2) variants) without any cross-figure clash.
-function _method_colors(groups)
-    colors = Dict{String,String}()
-    for (_, methods) in groups
-        for (i, m) in enumerate(methods)
-            colors[m.name] = _PALETTE[mod1(i, length(_PALETTE))]
-        end
-    end
-    return colors
+# Colour map for a single group's `methods`, assigned by position from the high-contrast leading
+# palette entries. Each group is a separate figure and is coloured independently, which uses the
+# vivid leading colours in every figure (important for the four near-coincident Gauss(2) variants)
+# and avoids any cross-group name collision.
+function _method_colors(methods)
+    Dict(m.name => _PALETTE[mod1(i, length(_PALETTE))] for (i, m) in enumerate(methods))
 end
 
 # Insert a suffix before the file extension, e.g. "foo.png" -> "foo_euler.png".
@@ -204,11 +198,11 @@ Plot the relative energy error over time, one panel per precision, methods overl
 with the group label appended to `path` (e.g. `_euler`, `_other`, `_gauss2`).
 """
 function plot_energy_error(runs, hamiltonian; path, title, groups = METHOD_GROUPS)
-    colors = _method_colors(groups)
     figs = Any[]
     for (label, methods) in groups
         push!(figs, _plot_grid(runs, run -> energy_error(run.sol, hamiltonian),
-            "|ΔH / H₀|", "$title — $(_group_title(label))", _suffix_path(path, label); methods, colors))
+            "|ΔH / H₀|", "$title — $(_group_title(label))", _suffix_path(path, label);
+            methods, colors = _method_colors(methods)))
     end
     return figs
 end
@@ -221,11 +215,11 @@ figure is written per entry in `groups`, with the group label appended to `path`
 `_euler`, `_other`, `_gauss2`).
 """
 function plot_solution_error(runs, reference; path, title, groups = METHOD_GROUPS)
-    colors = _method_colors(groups)
     figs = Any[]
     for (label, methods) in groups
         push!(figs, _plot_grid(runs, run -> solution_error(run.sol, reference),
-            "‖x − x_ref‖", "$title — $(_group_title(label))", _suffix_path(path, label); methods, colors))
+            "‖x − x_ref‖", "$title — $(_group_title(label))", _suffix_path(path, label);
+            methods, colors = _method_colors(methods)))
     end
     return figs
 end
@@ -243,11 +237,11 @@ clipped. One figure is written per entry in `groups`, with the group label appen
 """
 function plot_solution(runs; path, title, reference = nothing,
         coords = _default_coords, xlabel = "q", ylabel = "p", groups = METHOD_GROUPS)
-    colors = _method_colors(groups)
     figs = Any[]
     for (label, methods) in groups
         push!(figs, _plot_trajectory_grid(runs, coords, xlabel, ylabel,
-            "$title — $(_group_title(label))", _suffix_path(path, label); methods, colors, reference))
+            "$title — $(_group_title(label))", _suffix_path(path, label);
+            methods, colors = _method_colors(methods), reference))
     end
     return figs
 end

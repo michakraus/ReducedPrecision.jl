@@ -86,8 +86,12 @@ function solution_error(sol, reference)
     nsol = size(q, 2); nref = size(qr, 2)
     if nref > nsol
         # reference on a finer grid: pick the nsol evenly-spaced points (endpoints included) that
-        # line up with the solution's output times. Robust to the ±1-step ambiguity from a
-        # non-exact fine Δt (e.g. 0.1 in Float64).
+        # line up with the solution's output times. Guard that the reference actually *refines*
+        # the solution grid (integer steps per output step, to within fp rounding of the ratio),
+        # so a mismatched reference is rejected rather than silently mis-compared. The rounding
+        # tolerance also absorbs the ±1-step ambiguity of a non-exact fine Δt (e.g. 0.1 in Float64).
+        ratio = (nref - 1) / (nsol - 1)
+        @assert isapprox(ratio, round(ratio); rtol = 1e-3) "reference grid (nref=$nref) does not refine the solution grid (nsol=$nsol)"
         idx = round.(Int, range(1, nref; length = nsol))
         qr = qr[:, idx]; pr = pr[:, idx]
     end
