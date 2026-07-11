@@ -80,9 +80,9 @@ const MIDPOINT_METHODS = MethodSpec[
 ]
 
 """
-All methods (geometric, then non-geometric, then the partitioned Gauss(2) variants). The index
-in this vector fixes each method's colour, so grouping/reordering for plots never changes a
-method's colour.
+All methods (geometric, then non-geometric, then the partitioned Gauss(2) variants).
+This ordering is used as the default `methods` set for `run_study` sweeps.
+(Plot colours are assigned from the plotting `groups`, not from this list.)
 """
 const ALL_METHODS = vcat(GEOMETRIC_METHODS, NONGEOMETRIC_METHODS, MIDPOINT_METHODS)
 
