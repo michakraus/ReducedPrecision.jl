@@ -196,11 +196,11 @@ function _plot_trajectory_grid(runs, coordsfun, xlabel, ylabel, ptitle, path;
 end
 
 """
-    plot_energy_error(runs, hamiltonian; path, title)
+    plot_energy_error(runs, hamiltonian; path, title, groups = METHOD_GROUPS)
 
 Plot the relative energy error over time, one panel per precision, methods overlaid
-(geometric = solid, non-geometric = dashed). Two figures are written — one for the Euler
-methods and one for the remaining methods — with `_euler` / `_other` appended to `path`.
+(geometric = solid, non-geometric = dashed). One figure is written per entry in `groups`,
+with the group label appended to `path` (e.g. `_euler`, `_other`, `_midpoint`).
 """
 function plot_energy_error(runs, hamiltonian; path, title, groups = METHOD_GROUPS)
     colors = _method_colors(groups)
@@ -213,10 +213,11 @@ function plot_energy_error(runs, hamiltonian; path, title, groups = METHOD_GROUP
 end
 
 """
-    plot_solution_error(runs, reference; path, title)
+    plot_solution_error(runs, reference; path, title, groups = METHOD_GROUPS)
 
-Plot the state solution error over time versus `reference`, one panel per precision. As with
-`plot_energy_error`, two figures are written (`_euler` / `_other`).
+Plot the state solution error over time versus `reference`, one panel per precision. One
+figure is written per entry in `groups`, with the group label appended to `path` (e.g.
+`_euler`, `_other`, `_midpoint`).
 """
 function plot_solution_error(runs, reference; path, title, groups = METHOD_GROUPS)
     colors = _method_colors(groups)
@@ -230,13 +231,14 @@ end
 
 """
     plot_solution(runs; path, title, reference = nothing, coords = _default_coords,
-                  xlabel = "q", ylabel = "p")
+                  xlabel = "q", ylabel = "p", groups = METHOD_GROUPS)
 
 Plot the 2D trajectory of each method's solution, one panel per precision (geometric = solid,
 non-geometric = dashed). `coords(sol)` returns the `(xs, ys)` to plot — by default phase space
 `(q, p)` for a one-degree-of-freedom system and configuration space `(q₁, q₂)` otherwise. When
 `reference` is given, the axes are fitted to the reference trajectory so runaway methods are
-clipped. Two figures are written (`_euler` / `_other`).
+clipped. One figure is written per entry in `groups`, with the group label appended to `path`
+(e.g. `_euler`, `_other`, `_midpoint`).
 """
 function plot_solution(runs; path, title, reference = nothing,
         coords = _default_coords, xlabel = "q", ylabel = "p", groups = METHOD_GROUPS)
