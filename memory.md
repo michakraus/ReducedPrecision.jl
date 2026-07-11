@@ -106,12 +106,13 @@ phase space of the first lattice site.
 Solution-error reference: analytic `exact_solution` for the harmonic oscillator; Float64 `Gauss(8)`
 (same grid) for the pendulum, double pendulum and Toda lattice.
 
-**Registry-vs-local caveat.** The registered `GeometricProblems` versions can lag the local
-checkouts. Notably the registered pendulum `hamiltonian` is `(t, q, p)` (parameter-free), while the
-local copy also has a `(t, q, p, params)` method; `energy_error` (via `compute_invariant_error`)
-always passes `params`, so the pendulum scripts wrap it in a `(t, q, p, params) -> hamiltonian(t, q, p)`
-closure (behaviour-identical, since the pendulum is `l = m = g = 1`). If a script errors only on CI
-(registry) but not locally (dev-linked), suspect this kind of signature drift first.
+**Registry-vs-local caveat (resolved).** The registered `GeometricProblems` can lag the local
+checkouts, causing signature drift. This bit the pendulum: registered ≤ 0.6.24 had only a
+parameter-free `hamiltonian(t, q, p)`, while `energy_error` (via `compute_invariant_error`) passes
+`params`, so it errored on CI (registry) but not locally (dev-linked). Resolved by releasing
+`GeometricProblems` **0.6.25**, which restores the `(t, q, p, params)` method: `[compat]` now
+requires `0.6.25` and the pendulum scripts pass `hamiltonian` directly again (like the others).
+Heuristic: if a script errors only on CI but not locally, suspect this kind of signature drift first.
 
 ## Verification results
 

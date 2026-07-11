@@ -18,7 +18,7 @@ GeometricBase = "0.14"
 GeometricEquations = "0.21"
 GeometricIntegrators = "0.16.4"
 GeometricIntegratorsBase = "0.3.2"
-GeometricProblems = "0.6.24"
+GeometricProblems = "0.6.25"
 GeometricSolutions = "0.6.4"
 julia = "1.10"
 
