@@ -34,6 +34,10 @@ higher precisions where the energy-error floor is not precision-limited.
 
 ![Phase-space trajectory, Euler methods](figures/toda_lattice_solution_dt_0.1_euler.png)
 
+![Phase-space trajectory, other methods](figures/toda_lattice_solution_dt_0.1_other.png)
+
+![Phase-space trajectory, Gauss(2) variants](figures/toda_lattice_solution_dt_0.1_gauss2.png)
+
 The first site traces a quasi-periodic orbit; the symplectic methods stay on it while explicit Euler
 spirals out and implicit Euler spirals in, just as for the single oscillator.
 
@@ -52,3 +56,7 @@ implicit methods no longer hit the time-grid saturation that breaks them on the 
 oscillator/pendulum coarse runs.
 
 ![Phase-space trajectory, Euler methods](figures/toda_lattice_solution_dt_1.0_euler.png)
+
+![Phase-space trajectory, other methods](figures/toda_lattice_solution_dt_1.0_other.png)
+
+![Phase-space trajectory, Gauss(2) variants](figures/toda_lattice_solution_dt_1.0_gauss2.png)

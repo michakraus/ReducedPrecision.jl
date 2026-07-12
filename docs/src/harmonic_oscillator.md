@@ -35,6 +35,10 @@ grow on the nonlinear problems.
 
 ![Phase-space trajectory, Euler methods](figures/harmonic_oscillator_solution_dt_0.1_euler.png)
 
+![Phase-space trajectory, other methods](figures/harmonic_oscillator_solution_dt_0.1_other.png)
+
+![Phase-space trajectory, Gauss(2) variants](figures/harmonic_oscillator_solution_dt_0.1_gauss2.png)
+
 In phase space the behaviour is unmistakable: the symplectic methods stay on a closed (slightly
 deformed) ellipse — the level set of a nearby modified Hamiltonian — the reference is the exact
 circle, explicit Euler spirals **outward**, and implicit Euler spirals **inward**.
@@ -52,3 +56,7 @@ the symplectic methods and the implicit midpoint / Crank–Nicolson rules remain
 resolve `Δt` (see [Findings](@ref)).
 
 ![Phase-space trajectory, Euler methods](figures/harmonic_oscillator_solution_dt_1.0_euler.png)
+
+![Phase-space trajectory, other methods](figures/harmonic_oscillator_solution_dt_1.0_other.png)
+
+![Phase-space trajectory, Gauss(2) variants](figures/harmonic_oscillator_solution_dt_1.0_gauss2.png)

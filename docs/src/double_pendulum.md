@@ -32,7 +32,11 @@ rounding-compensation coefficients ``â, b̂, ĉ`` produce visibly different ene
 
 ### Configuration-space trajectory
 
+![Configuration-space trajectory, Euler methods](figures/double_pendulum_solution_dt_0.01_euler.png)
+
 ![Configuration-space trajectory, other methods](figures/double_pendulum_solution_dt_0.01_other.png)
+
+![Configuration-space trajectory, Gauss(2) variants](figures/double_pendulum_solution_dt_0.01_gauss2.png)
 
 The methods track the reference until the chaotic divergence sets in; at Float16 the surviving
 methods depart from the reference noticeably earlier.
@@ -55,3 +59,11 @@ in `Float16` (a NaN in the Newton direction, guarded and skipped — hence its a
 `Float16` panel). Reduced precision mainly raises the error floor; the qualitative ranking is the
 same across `Float16`/`Float32`/`Float64`. As always for this chaotic system the fine `Δt = 0.01`
 run is the more informative one.
+
+### Configuration-space trajectory
+
+![Configuration-space trajectory, Euler methods](figures/double_pendulum_solution_dt_0.1_euler.png)
+
+![Configuration-space trajectory, other methods](figures/double_pendulum_solution_dt_0.1_other.png)
+
+![Configuration-space trajectory, Gauss(2) variants](figures/double_pendulum_solution_dt_0.1_gauss2.png)

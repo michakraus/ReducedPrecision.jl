@@ -29,6 +29,10 @@ system the implementation differences become visible in the energy-error fine st
 
 ![Phase-space trajectory, Euler methods](figures/pendulum_solution_dt_0.1_euler.png)
 
+![Phase-space trajectory, other methods](figures/pendulum_solution_dt_0.1_other.png)
+
+![Phase-space trajectory, Gauss(2) variants](figures/pendulum_solution_dt_0.1_gauss2.png)
+
 ## Long scenario (Δt = 1, t ≤ 10 000)
 
 ![Energy error, Euler methods](figures/pendulum_energy_error_dt_1.0_euler.png)
@@ -40,3 +44,7 @@ non-symplectic Euler and explicit-midpoint methods drift. In Float16 the implici
 the long-horizon time-grid saturation.
 
 ![Phase-space trajectory, Euler methods](figures/pendulum_solution_dt_1.0_euler.png)
+
+![Phase-space trajectory, other methods](figures/pendulum_solution_dt_1.0_other.png)
+
+![Phase-space trajectory, Gauss(2) variants](figures/pendulum_solution_dt_1.0_gauss2.png)
