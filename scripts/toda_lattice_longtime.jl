@@ -1,10 +1,10 @@
-# Reduced-precision study: Toda lattice, long-time / coarse-step variant.
+# Reduced-precision study: Toda lattice, coarse-step variant.
 #
 # Same pipeline as toda_lattice.jl (see there for why the initial conditions/parameters are
 # hand-built at precision T and why a Hamiltonian closure is used), but with a coarse timestep
-# Δt = 1 and a long horizon t = 10_000 (nt = 10_000 steps). The solution error is measured against
-# a Float64 Gauss(8) reference computed at the *fine* step (Δt_ref = 0.1, as in the short scenario)
-# and subsampled onto the coarse grid; the reference integration is guarded.
+# Δt = 1 over the same horizon t = 100 (nt = 100 steps) as the short scenario. The solution error
+# is measured against a Float64 Gauss(8) reference computed at the *fine* step (Δt_ref = 0.1, as in
+# the short scenario) and subsampled onto the coarse grid; the reference integration is guarded.
 
 using ReducedPrecision
 using GeometricIntegrators: Gauss, integrate
@@ -15,7 +15,7 @@ const N  = 16       # lattice size
 const μ  = 0.3      # bump-width parameter of the initial condition
 const t₀ = 0.0
 const Δt = 1.0
-const nt = 10_000
+const nt = 100
 const t₁ = nt * Δt
 const Δt_ref = 0.1  # fine reference step (matches the short scenario)
 
@@ -37,7 +37,7 @@ verify_precision(runs)
 
 plot_energy_error(runs, ham;
     path  = joinpath(plotdir, "toda_lattice_energy_error_dt_$(Δt).png"),
-    title = "Toda Lattice — Relative Energy Error (Δt = 1, t ≤ 10⁴)")
+    title = "Toda Lattice — Relative Energy Error (Δt = 1, t ≤ 100)")
 
 # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
 reference = try
@@ -50,10 +50,10 @@ end
 if reference !== nothing
     plot_solution_error(runs, reference;
         path  = joinpath(plotdir, "toda_lattice_solution_error_dt_$(Δt).png"),
-        title = "Toda Lattice — Solution Error (Δt = 1, t ≤ 10⁴, vs. Float64 Gauss(8) at Δt = 0.1)")
+        title = "Toda Lattice — Solution Error (Δt = 1, t ≤ 100, vs. Float64 Gauss(8) at Δt = 0.1)")
 
     plot_solution(runs; reference = reference,
         path   = joinpath(plotdir, "toda_lattice_solution_dt_$(Δt).png"),
-        title  = "Toda Lattice — Phase-Space Trajectory (Δt = 1, t ≤ 10⁴)",
+        title  = "Toda Lattice — Phase-Space Trajectory (Δt = 1, t ≤ 100)",
         coords = coords, xlabel = "q₁", ylabel = "p₁")
 end

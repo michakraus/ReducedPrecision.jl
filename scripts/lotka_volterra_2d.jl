@@ -18,7 +18,7 @@ const t₁ = nt * Δt
 
 # Degenerate-Lagrangian (LODE) form at precision T, with initial conditions and time all in T.
 make_problem(::Type{T}) where {T} = lodeproblem(T.(LV.q₀);
-    timespan   = (T(LV.timespan[begin]), T(t₁)),
+    timespan   = (T(0), T(t₁)),
     timestep   = T(Δt),
     parameters = map(T, LV.default_parameters))
 

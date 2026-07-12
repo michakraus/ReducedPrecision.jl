@@ -38,16 +38,21 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
 - **`scripts/{harmonic_oscillator,pendulum,double_pendulum,toda_lattice,lotka_volterra_2d,
   lotka_volterra_4d}.jl`** — short-step drivers (HO & pendulum & Toda: Δt = 0.1, t ≤ 100; double
   pendulum & both Lotka–Volterra: Δt = 0.01, t ≤ 10).
-- **`scripts/{…}_longtime.jl`** — coarse-step drivers: HO/pendulum/Toda Δt = 1, t ≤ 10 000; double
-  pendulum Δt = 0.1, t ≤ 1000; Lotka–Volterra Δt = 0.1, t ≤ 100.
+- **`scripts/{…}_longtime.jl`** — coarse-step drivers: HO/pendulum Δt = 1, t ≤ 10 000; Toda Δt = 1,
+  t ≤ 100 (same horizon as its short run); double pendulum Δt = 0.1, t ≤ 10 (same horizon as its
+  short run); Lotka–Volterra Δt = 0.1, t ≤ 100. (The double-pendulum coarse run uses the line-search
+  `Newton` solver with a `Backtracking` linesearch and `max_iterations = 100`, not the default
+  `DogLeg`; the short run matches.)
 - **`plots/`** — generated figures. Each study writes, per method group, an energy-error, a
   solution-error, and a 2D solution (trajectory) figure. **Filenames encode the timestep**
   (`…_dt_<Δt>_<group>.png`), so a problem's two scenarios are distinguished by `Δt` (not a
   "longtime" label). Every plot title also carries the run parameters, e.g. `… (Δt = 0.1, t ≤ 100)`.
 
 Run any problem with: `julia --project=. scripts/<problem>.jl`, or regenerate every figure at once
-with `bash scripts/run_all.sh` (it auto-discovers `scripts/*.jl`, cd's to the repo root, and
-instantiates the project first; per-script failures are collected and reported at the end).
+with `julia --project=. scripts/run_all.jl` (it auto-discovers `scripts/*.jl`, activates and
+instantiates the project, and `include`s each script into its own throwaway module in a *single*
+Julia session — so the shared packages compile once; per-script failures are collected and reported
+at the end with a non-zero exit).
 
 - **`docs/`** — Documenter.jl site summarising all experiments and findings (Home, Methodology, a
   page per problem, Findings). Build with `julia --project=docs docs/make.jl` *after* running the
@@ -57,8 +62,8 @@ instantiates the project first; per-script failures are collected and reported a
   - `CI.yml` runs **only the tests** (matrix: Julia LTS `1.10` + latest stable `1` × ubuntu/macOS/
     windows; no `arch` pin since macOS runners are arm64). Deps resolve from the registry.
   - `Documenter.yml` **builds and deploys the docs**: `julia-buildpkg` instantiates the main
-    project, a step runs all twelve experiment scripts (via `bash scripts/run_all.sh`) to
-    (re)generate `plots/`, then
+    project, a step runs all twelve experiment scripts (via `julia --project=. scripts/run_all.jl`)
+    to (re)generate `plots/`, then
     `docs/make.jl` embeds them and deploys. Figures are never committed — regenerated each build.
 
 ## Plotting
@@ -169,16 +174,18 @@ All runs are wrapped so a single failure never aborts the study.
   top of the plot), while symplectic Euler A/B stay bounded over the full horizon and implicit
   midpoint / Crank-Nicolson stay near machine level. The energy floor still drops per precision.
   In Float16 some implicit methods fail (time-grid saturation → identical successive times).
-- **Double pendulum:** the coarse step is now **Δt = 0.1** (t ≤ 1000), replacing the earlier
-  far-too-coarse Δt = 1. The explicit and symplectic-Euler methods blow up quickly (guard-truncated)
-  while the implicit midpoint / Crank-Nicolson rules stay bounded much longer; reduced-precision and
-  Float16 non-convergence effects are prominent. The short-step (Δt = 0.01) run remains the more
-  informative one for this stiff, chaotic problem.
+- **Double pendulum:** both scenarios share the horizon **t ≤ 10** and differ only in Δt (short
+  Δt = 0.01, coarse Δt = 0.1). The explicit and symplectic-Euler methods blow up quickly
+  (guard-truncated) while the implicit midpoint / Crank-Nicolson rules stay bounded longer;
+  reduced-precision and Float16 non-convergence effects are prominent. The short-step (Δt = 0.01)
+  run remains the more informative one for this stiff, chaotic problem. Both runs use the
+  line-search `Newton` solver with a `Backtracking` linesearch and `max_iterations = 100`.
 - **Toda lattice:** behaves like the oscillator/pendulum — implicit midpoint / Crank-Nicolson keep
-  energy bounded (~1e-5) while explicit midpoint and RK4 drift; the Gauss(8) reference converges
-  even at Δt = 1, so the full plot set is produced. In Float16 the two implicit methods fail on the
-  long-horizon time-grid saturation; the short scenario runs every method at every precision (the
-  bounded bump initial data keeps the exponentials well-behaved).
+  energy bounded (~1e-5) while explicit methods diverge early (guard-truncated) and RK4 drifts
+  mildly; the Gauss(8) reference converges even at Δt = 1, so the full plot set is produced. Both
+  scenarios now share the t ≤ 100 horizon (short Δt = 0.1, coarse Δt = 1), so the Float16 implicit
+  methods no longer hit the long-horizon time-grid saturation — every method runs at every precision
+  (the bounded bump initial data keeps the exponentials well-behaved).
 
 ## Comparison-group findings
 

@@ -95,9 +95,9 @@ Each problem is run in two scenarios, a fine short-horizon run and a coarser one
 * **Short / fine step** — harmonic oscillator, pendulum and Toda lattice use `Δt = 0.1`, `t ≤ 100`;
   the double pendulum uses `Δt = 0.01`, `t ≤ 10` (its natural timescale is much shorter); the
   Lotka–Volterra problems use `Δt = 0.01`, `t ≤ 10`.
-* **Coarse step** — harmonic oscillator, pendulum and Toda lattice use `Δt = 1`, `t ≤ 10 000`; the
-  double pendulum uses `Δt = 0.1`, `t ≤ 1000`; the Lotka–Volterra problems use `Δt = 0.1`,
-  `t ≤ 100`.
+* **Coarse step** — harmonic oscillator and pendulum use `Δt = 1`, `t ≤ 10 000`; the Toda lattice
+  uses `Δt = 1` over the same `t ≤ 100` as its short run; the double pendulum uses `Δt = 0.1` over
+  the same `t ≤ 10` as its short run; the Lotka–Volterra problems use `Δt = 0.1`, `t ≤ 100`.
 
 The output figure filenames encode the timestep (e.g. `…_dt_0.1_…`), so the two scenarios of a
 problem are distinguished by `Δt` rather than by a "longtime" label.

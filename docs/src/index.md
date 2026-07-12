@@ -71,10 +71,10 @@ julia --project=. scripts/lotka_volterra_4d_longtime.jl
 ```
 
 Alternatively, regenerate every figure at once with the runner (it discovers `scripts/*.jl`
-automatically):
+automatically and runs them in a single Julia session, so the shared packages compile only once):
 
 ```bash
-bash scripts/run_all.sh
+julia --project=. scripts/run_all.jl
 ```
 
 Each script writes its figures to `plots/`. The documentation embeds those figures, so the scripts
