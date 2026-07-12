@@ -45,15 +45,16 @@ the target precision, so that the data type and the time type agree.
 These are real properties of `Float16`, surfaced by the study rather than worked around:
 
 * **Time-grid saturation at long horizons.** Once `t` exceeds the range where successive time
-  stamps differ in `Float16` (e.g. `ulp(1000) ≈ 0.5 ≫ Δt = 0.1`), the implicit methods' Hermite
-  initial guess sees `t₀ == t₁` and fails. This is why the short scenarios cap the horizon so that
-  the full method × precision matrix is populated, while in the long scenarios some `Float16`
-  implicit runs drop out.
-* **Non-convergent implicit solves on stiff systems.** On the double pendulum the `Float16` implicit
-  solves produce `NaN` directions even with the robust `DogLeg` solver; and the coarser the step,
-  the more of the stiff-system implicit solves drop out. Switching from `Newton` to the trust-region
-  `DogLeg` improves robustness in general but does not rescue these genuinely half-precision-limited
-  solves.
+  stamps differ in `Float16` (e.g. `ulp(10000) ≈ 8 ≫ Δt = 1`), the implicit methods' Hermite
+  initial guess sees `t₀ == t₁` and fails. This is why the harmonic-oscillator and pendulum coarse
+  scenarios (which run out to `t ≤ 10 000`) drop some `Float16` implicit runs, whereas the shorter
+  scenarios — including the double pendulum and Toda lattice, whose coarse runs share their short
+  run's horizon — populate the full method × precision matrix.
+* **Non-convergent implicit solves on stiff systems.** On the double pendulum the `Float16`
+  Crank–Nicolson solve still produces a `NaN` direction and drops out — even after switching the
+  nonlinear solve from the trust-region `DogLeg` to the line-search `Newton`/`Backtracking` solver
+  (capped at 100 iterations). It is a genuinely half-precision-limited solve, not a solver-tuning
+  issue.
 * **Problem-dependent robustness.** The Toda lattice, whose bump initial data keeps the state
   bounded, runs every method at every precision in the short scenario — considerably more
   `Float16`-friendly than the stiff, dimensional double pendulum.

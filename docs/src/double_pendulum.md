@@ -37,7 +37,7 @@ rounding-compensation coefficients ``â, b̂, ĉ`` produce visibly different ene
 The methods track the reference until the chaotic divergence sets in; at Float16 the surviving
 methods depart from the reference noticeably earlier.
 
-## Coarse scenario (Δt = 0.1, t ≤ 1000)
+## Coarse scenario (Δt = 0.1, t ≤ 10)
 
 ![Energy error, Euler methods](figures/double_pendulum_energy_error_dt_0.1_euler.png)
 
@@ -45,11 +45,13 @@ methods depart from the reference noticeably earlier.
 
 ![Energy error, Gauss(2) variants](figures/double_pendulum_energy_error_dt_0.1_gauss2.png)
 
-At the ten-times-coarser step `Δt = 0.1` the chaotic double pendulum is badly under-resolved and the
-relative energy error is of order one for essentially every method. Counter-intuitively it is the
-**implicit** solves (implicit midpoint, Crank–Nicolson, and the partitioned Gauss(2) variants) that
-spike and diverge early — their nonlinear iterations blow up on the stiff coarse-step problem and
-the guard truncates them — while the explicit RK methods merely hover around `1e0` for the whole
-horizon (tracking a wrong-but-bounded trajectory). At `Float16` the implicit solves fail outright.
-Reduced precision makes little qualitative difference at this step; the short-step run is the
-informative one for the double pendulum.
+At the ten-times-coarser step `Δt = 0.1` (over the same `t ≤ 10` horizon as the fine run) every
+solve now stays stable — with the line-search `Newton`/`Backtracking` solver capped at 100
+iterations, nothing trips the divergence guard. The geometric methods keep the smallest energy
+error: symplectic Euler A/B, implicit midpoint and the partitioned Gauss(2) variants stay bounded
+around `1e-2`–`1e-1`, while the non-geometric methods drift up toward order one (explicit Euler
+worst, then explicit midpoint, RK4 and implicit Euler). The only outright failure is Crank–Nicolson
+in `Float16` (a NaN in the Newton direction, guarded and skipped — hence its absence from the
+`Float16` panel). Reduced precision mainly raises the error floor; the qualitative ranking is the
+same across `Float16`/`Float32`/`Float64`. As always for this chaotic system the fine `Δt = 0.01`
+run is the more informative one.

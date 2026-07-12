@@ -20,7 +20,7 @@ const t₁ = nt * Δt
 # Degenerate-Lagrangian (LODE) form at precision T. The gauge matrices A/B are exact rationals and
 # stay unconverted (they promote to T when evaluated); only q₀, timespan, timestep, parameters are T.
 make_problem(::Type{T}) where {T} = LV.lodeproblem(T.(LV.q₀), LV.A_quasicanonical_reduced, LV.B;
-    timespan   = (T(LV.timespan[begin]), T(t₁)),
+    timespan   = (T(0), T(t₁)),
     timestep   = T(Δt),
     parameters = map(T, LV.default_parameters))
 

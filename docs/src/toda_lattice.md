@@ -37,15 +37,18 @@ higher precisions where the energy-error floor is not precision-limited.
 The first site traces a quasi-periodic orbit; the symplectic methods stay on it while explicit Euler
 spirals out and implicit Euler spirals in, just as for the single oscillator.
 
-## Long scenario (Δt = 1, t ≤ 10 000)
+## Coarse scenario (Δt = 1, t ≤ 100)
 
 ![Energy error, Euler methods](figures/toda_lattice_energy_error_dt_1.0_euler.png)
 
 ![Energy error, other methods](figures/toda_lattice_energy_error_dt_1.0_other.png)
 
-The `Gauss(8)` reference converges even at `Δt = 1`, so the full plot set is produced. Implicit
-midpoint and Crank–Nicolson keep the energy bounded (≈ `1e-5`) over the whole horizon while explicit
-midpoint and RK4 drift; in Float16 the two implicit methods fail on the long-horizon time-grid
-saturation.
+The `Gauss(8)` reference converges even at `Δt = 1`, so the full plot set is produced. At this
+coarse step the explicit methods diverge within the first ~10–15 steps (guard-truncated) at every
+precision, while implicit midpoint and Crank–Nicolson keep the energy error near machine level
+(≈ `1e-5` in Float32/Float64, sitting at the resolution floor in Float16) over the whole horizon and
+RK4 drifts only mildly. Because this run now shares the short run's `t ≤ 100` horizon, the Float16
+implicit methods no longer hit the time-grid saturation that breaks them on the far longer
+oscillator/pendulum coarse runs.
 
 ![Phase-space trajectory, Euler methods](figures/toda_lattice_solution_dt_1.0_euler.png)

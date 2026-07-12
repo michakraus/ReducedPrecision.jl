@@ -26,9 +26,10 @@ jobs:
         # The docs embed the figures produced by the experiment scripts (written to plots/,
         # which is git-ignored). Generate them here — in the main project, instantiated by
         # julia-buildpkg — so they are available when the docs are built; make.jl copies them
-        # from plots/ into the docs source tree. run_all.sh runs *every* experiment script, so
-        # new examples (e.g. the Lotka–Volterra studies) are picked up automatically.
-        run: bash scripts/run_all.sh
+        # from plots/ into the docs source tree. run_all.jl runs *every* experiment script (in a
+        # single Julia session, so packages compile once), so new examples (e.g. the Lotka–Volterra
+        # studies) are picked up automatically.
+        run: julia --project=. scripts/run_all.jl
       - name: Build and deploy docs
         run: |
           julia --project=docs -e 'using Pkg; Pkg.instantiate()'

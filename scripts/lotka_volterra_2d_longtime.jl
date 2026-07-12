@@ -16,7 +16,7 @@ const t₁ = nt * Δt
 const Δt_ref = 0.01  # fine reference step (matches the short scenario)
 
 _lv_problem(::Type{T}, dt) where {T} = lodeproblem(T.(LV.q₀);
-    timespan = (T(LV.timespan[begin]), T(t₁)), timestep = T(dt), parameters = map(T, LV.default_parameters))
+    timespan = (T(0), T(t₁)), timestep = T(dt), parameters = map(T, LV.default_parameters))
 
 make_problem(::Type{T})   where {T} = _lv_problem(T, Δt)
 make_reference(::Type{T}) where {T} = _lv_problem(T, Δt_ref)
