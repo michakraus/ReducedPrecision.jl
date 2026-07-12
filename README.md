@@ -51,6 +51,13 @@ julia --project=. scripts/harmonic_oscillator_longtime.jl # coarse: Δt = 1,  t 
 #     lotka_volterra_2d, and lotka_volterra_4d
 ```
 
+To regenerate every figure at once, run all experiment scripts via the runner (it discovers
+`scripts/*.jl` automatically, so new examples are picked up without editing it):
+
+```bash
+bash scripts/run_all.sh
+```
+
 Output figure filenames encode the timestep (e.g. `…_dt_0.1_…`), so a problem's two scenarios are
 distinguished by `Δt`.
 

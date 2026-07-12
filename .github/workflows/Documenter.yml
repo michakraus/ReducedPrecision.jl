@@ -28,7 +28,7 @@ jobs:
         # julia-buildpkg — so they are available when the docs are built; make.jl copies them
         # from plots/ into the docs source tree. run_all.sh runs *every* experiment script, so
         # new examples (e.g. the Lotka–Volterra studies) are picked up automatically.
-        run: bash run_all.sh
+        run: bash scripts/run_all.sh
       - name: Build and deploy docs
         run: |
           julia --project=docs -e 'using Pkg; Pkg.instantiate()'

@@ -45,7 +45,9 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
   (`…_dt_<Δt>_<group>.png`), so a problem's two scenarios are distinguished by `Δt` (not a
   "longtime" label). Every plot title also carries the run parameters, e.g. `… (Δt = 0.1, t ≤ 100)`.
 
-Run any problem with: `julia --project=. scripts/<problem>.jl`.
+Run any problem with: `julia --project=. scripts/<problem>.jl`, or regenerate every figure at once
+with `bash scripts/run_all.sh` (it auto-discovers `scripts/*.jl`, cd's to the repo root, and
+instantiates the project first; per-script failures are collected and reported at the end).
 
 - **`docs/`** — Documenter.jl site summarising all experiments and findings (Home, Methodology, a
   page per problem, Findings). Build with `julia --project=docs docs/make.jl` *after* running the
@@ -55,7 +57,8 @@ Run any problem with: `julia --project=. scripts/<problem>.jl`.
   - `CI.yml` runs **only the tests** (matrix: Julia LTS `1.10` + latest stable `1` × ubuntu/macOS/
     windows; no `arch` pin since macOS runners are arm64). Deps resolve from the registry.
   - `Documenter.yml` **builds and deploys the docs**: `julia-buildpkg` instantiates the main
-    project, a step runs all twelve experiment scripts to (re)generate `plots/`, then
+    project, a step runs all twelve experiment scripts (via `bash scripts/run_all.sh`) to
+    (re)generate `plots/`, then
     `docs/make.jl` embeds them and deploys. Figures are never committed — regenerated each build.
 
 ## Plotting

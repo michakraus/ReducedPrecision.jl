@@ -70,5 +70,12 @@ julia --project=. scripts/lotka_volterra_2d_longtime.jl
 julia --project=. scripts/lotka_volterra_4d_longtime.jl
 ```
 
+Alternatively, regenerate every figure at once with the runner (it discovers `scripts/*.jl`
+automatically):
+
+```bash
+bash scripts/run_all.sh
+```
+
 Each script writes its figures to `plots/`. The documentation embeds those figures, so the scripts
 must be run before building the docs.

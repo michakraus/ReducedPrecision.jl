@@ -8,7 +8,7 @@
 # to plots/ (filenames encode the timestep, e.g. `…_dt_0.1_euler.png`). This regenerates the
 # figures independently of the documentation build.
 #
-# Usage:  bash run_all.sh   (or ./run_all.sh)
+# Usage:  bash scripts/run_all.sh   (or ./scripts/run_all.sh)
 #
 # A single script that throws is reported at the end and makes the run exit non-zero, but does
 # not stop the remaining scripts (per-run integration failures are already caught inside
@@ -17,7 +17,7 @@
 set -uo pipefail
 shopt -s nullglob
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 # Make sure the environment is instantiated before the timing loop.
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
