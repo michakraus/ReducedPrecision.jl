@@ -4,9 +4,13 @@ using Test
 using GeometricBase: datatype, timetype
 using GeometricIntegratorsBase: ExplicitEuler
 using GeometricProblems.HarmonicOscillator: podeproblem, hamiltonian, exact_solution
+import GeometricProblems.HarmonicOscillator as HO
 
-# A small, fast harmonic-oscillator problem (10 steps) at precision T.
-make_ho(::Type{T}) where {T} = podeproblem(T; timespan = (T(0.0), T(1.0)), timestep = T(0.1))
+# A small, fast harmonic-oscillator problem (10 steps) at precision T. GeometricProblems v0.7.0
+# dropped the `podeproblem(::Type{T})` precision constructor, so build the T-typed initial
+# conditions from the module defaults.
+make_ho(::Type{T}) where {T} =
+    podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(1.0)), timestep = T(0.1))
 
 # Fetch the run for a given method name.
 runof(runs, name) = only(filter(r -> r.method.name == name, runs))
@@ -79,7 +83,8 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         @test all(isfinite, se)
 
         # a finer-grid reference (here Δt/2) is subsampled onto the solution's coarser grid
-        make_ho_fine(::Type{T}) where {T} = podeproblem(T; timespan = (T(0.0), T(1.0)), timestep = T(0.05))
+        make_ho_fine(::Type{T}) where {T} =
+            podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(1.0)), timestep = T(0.05))
         se_fine = solution_error(sea.sol, exact_solution(make_ho_fine(Float64)))
         @test length(se_fine) == length(tv)          # subsampled to the solution grid
         @test se_fine[1] ≈ 0.0 atol = 1e-12
@@ -104,7 +109,7 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         # a coarse oscillator (Δt = 1) makes explicit Euler blow up while the symplectic
         # methods stay bounded
         make_coarse(::Type{T}) where {T} =
-            podeproblem(T; timespan = (T(0.0), T(100.0)), timestep = T(1.0))
+            podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(100.0)), timestep = T(1.0))
         runs = run_study(make_coarse; precisions = (Float64,), bound = 1e3)
 
         ee = runof(runs, "Explicit Euler")

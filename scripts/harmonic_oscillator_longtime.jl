@@ -8,13 +8,15 @@
 
 using ReducedPrecision
 using GeometricProblems.HarmonicOscillator: podeproblem, hamiltonian, exact_solution
+import GeometricProblems.HarmonicOscillator as HO
 
 const t₀ = 0.0
 const Δt = 1.0
 const nt = 10_000
 const t₁ = nt * Δt
 
-make_problem(::Type{T}) where {T} = podeproblem(T; timespan = (T(t₀), T(t₁)), timestep = T(Δt))
+make_problem(::Type{T}) where {T} =
+    podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 

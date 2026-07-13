@@ -142,6 +142,18 @@ parameter-free `hamiltonian(t, q, p)`, while `energy_error` (via `compute_invari
 requires `0.6.25` and the pendulum scripts pass `hamiltonian` directly again (like the others).
 Heuristic: if a script errors only on CI but not locally, suspect this kind of signature drift first.
 
+**GeometricProblems v0.7.0 migration.** `[compat]` bumped to `0.7` (no dependency-bound changes;
+0.7.0 only altered the problem modules' own API). Two breaking changes touched this repo:
+1. The `podeproblem(::Type{T})` / `lodeproblem(::Type{T})` precision constructor was removed — the
+   first positional argument is now the initial condition, not the datatype. The harmonic-oscillator
+   and pendulum scripts (and `test/runtests.jl`) now hand-build `T`-typed initial conditions from the
+   module defaults, e.g. `podeproblem(T.(HO.q₀), T.(HO.p₀); …)` — matching the pattern the double
+   pendulum / Toda / Lotka–Volterra scripts already used.
+2. `default_parameters` changed from a `const` NamedTuple to a type-parameterized function
+   `default_parameters(::Type{T}=Float64)`. Every `map(T, MOD.default_parameters)` became
+   `MOD.default_parameters(T)` (double pendulum, Toda, both Lotka–Volterra, and their longtime
+   variants). All 167 tests pass and all 12 scripts regenerate their figures cleanly under 0.7.0.
+
 ## Verification results
 
 **Precision purity confirmed** — `verify_precision` passes for every successful run across all six

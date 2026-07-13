@@ -26,7 +26,7 @@ const t₁ = nt * Δt
 function make_problem(::Type{T}) where {T}
     q₀     = T.(TL.compute_initial_q(μ, N))
     p₀     = zero(q₀)
-    params = map(T, TL.default_parameters)
+    params = TL.default_parameters(T)
     hodeproblem(N, q₀, p₀; timespan = (T(t₀), T(t₁)), timestep = T(Δt), parameters = params)
 end
 

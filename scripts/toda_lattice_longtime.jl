@@ -21,7 +21,7 @@ const Δt_ref = 0.1  # fine reference step (matches the short scenario)
 
 _toda_problem(::Type{T}, dt) where {T} =
     hodeproblem(N, T.(TL.compute_initial_q(μ, N)), zero(T.(TL.compute_initial_q(μ, N)));
-        timespan = (T(t₀), T(t₁)), timestep = T(dt), parameters = map(T, TL.default_parameters))
+        timespan = (T(t₀), T(t₁)), timestep = T(dt), parameters = TL.default_parameters(T))
 
 make_problem(::Type{T})   where {T} = _toda_problem(T, Δt)
 make_reference(::Type{T}) where {T} = _toda_problem(T, Δt_ref)

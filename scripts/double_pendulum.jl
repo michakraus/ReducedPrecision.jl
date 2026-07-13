@@ -26,7 +26,7 @@ function make_problem(::Type{T}) where {T}
     p₀     = T.(DP.p₀)
     tspan  = (T(t₀), T(t₁))
     dt     = T(Δt)
-    params = map(T, DP.default_parameters)
+    params = DP.default_parameters(T)
     hodeproblem(q₀, p₀; timespan = tspan, timestep = dt, parameters = params)
 end
 

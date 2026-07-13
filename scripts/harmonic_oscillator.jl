@@ -7,6 +7,7 @@
 
 using ReducedPrecision
 using GeometricProblems.HarmonicOscillator: podeproblem, hamiltonian, exact_solution
+import GeometricProblems.HarmonicOscillator as HO
 
 # Horizon capped at t = 100 (nt = 1000): still many oscillation periods, but within the
 # time range Float16 can resolve at Δt = 0.1 (ulp(100) ≈ 0.06 < Δt). A longer horizon makes
@@ -17,8 +18,11 @@ const Δt = 0.1
 const nt = 1_000
 const t₁ = nt * Δt
 
-# Partitioned form at precision T, with initial conditions *and* time all in T.
-make_problem(::Type{T}) where {T} = podeproblem(T; timespan = (T(t₀), T(t₁)), timestep = T(Δt))
+# Partitioned form at precision T, with initial conditions *and* time all in T. As of
+# GeometricProblems v0.7.0 the `podeproblem(::Type{T})` precision constructor is gone, so the
+# T-typed initial conditions are built here from the module defaults.
+make_problem(::Type{T}) where {T} =
+    podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 

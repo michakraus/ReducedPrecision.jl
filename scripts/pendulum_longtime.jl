@@ -9,6 +9,7 @@
 using ReducedPrecision
 using GeometricIntegrators: Gauss, integrate
 using GeometricProblems.Pendulum: podeproblem, hamiltonian
+import GeometricProblems.Pendulum as PD
 
 const t₀ = 0.0
 const Δt = 1.0
@@ -16,8 +17,12 @@ const nt = 10_000
 const t₁ = nt * Δt
 const Δt_ref = 0.1   # fine reference step (matches the short scenario)
 
-make_problem(::Type{T})   where {T} = podeproblem(T; timespan = (T(t₀), T(t₁)), timestep = T(Δt))
-make_reference(::Type{T}) where {T} = podeproblem(T; timespan = (T(t₀), T(t₁)), timestep = T(Δt_ref))
+# GeometricProblems v0.7.0 dropped the `podeproblem(::Type{T})` precision constructor, so the
+# T-typed initial conditions are built here from the module defaults.
+make_problem(::Type{T})   where {T} =
+    podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
+make_reference(::Type{T}) where {T} =
+    podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt_ref))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 

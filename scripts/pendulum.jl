@@ -7,6 +7,7 @@
 using ReducedPrecision
 using GeometricIntegrators: Gauss, integrate
 using GeometricProblems.Pendulum: podeproblem, hamiltonian
+import GeometricProblems.Pendulum as PD
 
 # Horizon capped at t = 100 (nt = 1000) so Float16 can resolve the time grid at Δt = 0.1
 # (see harmonic_oscillator.jl for the rationale).
@@ -15,7 +16,10 @@ const Δt = 0.1
 const nt = 1_000
 const t₁ = nt * Δt
 
-make_problem(::Type{T}) where {T} = podeproblem(T; timespan = (T(t₀), T(t₁)), timestep = T(Δt))
+# GeometricProblems v0.7.0 dropped the `podeproblem(::Type{T})` precision constructor, so the
+# T-typed initial conditions are built here from the module defaults.
+make_problem(::Type{T}) where {T} =
+    podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 

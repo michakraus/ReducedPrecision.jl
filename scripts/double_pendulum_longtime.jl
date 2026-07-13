@@ -23,7 +23,7 @@ const Δt_ref = 0.01  # fine reference step (matches the short scenario)
 
 function _dp_problem(::Type{T}, dt) where {T}
     hodeproblem(T.(DP.θ₀), T.(DP.p₀);
-        timespan = (T(t₀), T(t₁)), timestep = T(dt), parameters = map(T, DP.default_parameters))
+        timespan = (T(t₀), T(t₁)), timestep = T(dt), parameters = DP.default_parameters(T))
 end
 
 make_problem(::Type{T})   where {T} = _dp_problem(T, Δt)

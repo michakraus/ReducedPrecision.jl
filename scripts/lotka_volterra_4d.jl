@@ -22,7 +22,7 @@ const t₁ = nt * Δt
 make_problem(::Type{T}) where {T} = LV.lodeproblem(T.(LV.q₀), LV.A_quasicanonical_reduced, LV.B;
     timespan   = (T(0), T(t₁)),
     timestep   = T(Δt),
-    parameters = map(T, LV.default_parameters))
+    parameters = LV.default_parameters(T))
 
 # Hamiltonian closure (energy depends on q only; energy_error evaluates it as (t,q,p,params)).
 ham(t, q, p, params) = hamiltonian(t, q, params)

@@ -20,7 +20,7 @@ const t₁ = nt * Δt
 make_problem(::Type{T}) where {T} = lodeproblem(T.(LV.q₀);
     timespan   = (T(0), T(t₁)),
     timestep   = T(Δt),
-    parameters = map(T, LV.default_parameters))
+    parameters = LV.default_parameters(T))
 
 # Hamiltonian closure: the energy depends on q only, but energy_error evaluates it as (t,q,p,params).
 ham(t, q, p, params) = hamiltonian(t, q, params)
