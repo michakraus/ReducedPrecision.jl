@@ -31,12 +31,33 @@ At Float32 and Float64 the three variational integrators conserve energy well; a
 and `PMVI` solves fail (NaN directions or log-domain errors from the degenerate Lagrangian), while
 implicit midpoint still runs at the short step.
 
+### Solution error
+
+![Solution error, variational integrators](figures/lotka_volterra_4d_solution_error_dt_0.01_variational.png)
+
+Against the `Gauss(8)` reference the three integrators keep a small trajectory error at
+Float32/Float64; at Float16 only implicit midpoint survives to contribute.
+
 ### Configuration-space trajectory
 
 ![Trajectory, variational integrators](figures/lotka_volterra_4d_solution_dt_0.01_variational.png)
 
 ## Coarse scenario (Δt = 0.1, t ≤ 100)
 
+### Energy error
+
 ![Energy error, variational integrators](figures/lotka_volterra_4d_energy_error_dt_0.1_variational.png)
+
+At the coarser step and longer horizon the differences between the variational integrators, and the
+effect of precision on their long-time energy behaviour, are accentuated.
+
+### Solution error
+
+![Solution error, variational integrators](figures/lotka_volterra_4d_solution_error_dt_0.1_variational.png)
+
+Over the longer horizon the trajectory error against the reference likewise separates the three
+integrators at the coarse step.
+
+### Configuration-space trajectory
 
 ![Trajectory, variational integrators](figures/lotka_volterra_4d_solution_dt_0.1_variational.png)

@@ -17,18 +17,27 @@ condition keeps ``q \in [0,1]`` so the exponentials are well-behaved.
 
 ![Energy error, other methods](figures/toda_lattice_energy_error_dt_0.1_other.png)
 
+![Energy error, Gauss(2) variants](figures/toda_lattice_energy_error_dt_0.1_gauss2.png)
+
 All methods run at **all three precisions** — the bounded initial data makes the Toda lattice
 markedly more Float16-friendly than the double pendulum. The now-familiar pattern holds: symplectic
 and midpoint/trapezoidal methods keep the energy error bounded (≈ `1e-5`–`1e-6` at Float32/Float64),
-while explicit midpoint and RK4 drift and the Euler methods grow/dissipate.
+while explicit midpoint and RK4 drift and the Euler methods grow/dissipate. Among the four
+partitioned-Gauss(2) variants the differences between the symplectic and duplicated tableaus and
+between keeping or zeroing ``â, b̂, ĉ`` are most visible at the higher precisions where the
+energy-error floor is not precision-limited.
 
-### Partitioned Gauss(2) variants
+### Solution error
 
-![Energy error, Gauss(2) variants](figures/toda_lattice_energy_error_dt_0.1_gauss2.png)
+![Solution error, Euler methods](figures/toda_lattice_solution_error_dt_0.1_euler.png)
 
-The four partitioned-Gauss(2) variants are compared on the Toda lattice; the differences between the
-symplectic and duplicated tableaus and between keeping or zeroing ``â, b̂, ĉ`` are most visible at the
-higher precisions where the energy-error floor is not precision-limited.
+![Solution error, other methods](figures/toda_lattice_solution_error_dt_0.1_other.png)
+
+![Solution error, Gauss(2) variants](figures/toda_lattice_solution_error_dt_0.1_gauss2.png)
+
+Against the `Gauss(8)` reference the first-site trajectory error stays smallest for the symplectic,
+midpoint and Gauss(2) methods and largest for the non-geometric Euler / explicit-midpoint methods,
+tracking the energy-error ranking across all three precisions.
 
 ### Phase-space trajectory
 
@@ -43,9 +52,13 @@ spirals out and implicit Euler spirals in, just as for the single oscillator.
 
 ## Coarse scenario (Δt = 1, t ≤ 100)
 
+### Energy error
+
 ![Energy error, Euler methods](figures/toda_lattice_energy_error_dt_1.0_euler.png)
 
 ![Energy error, other methods](figures/toda_lattice_energy_error_dt_1.0_other.png)
+
+![Energy error, Gauss(2) variants](figures/toda_lattice_energy_error_dt_1.0_gauss2.png)
 
 The `Gauss(8)` reference converges even at `Δt = 1`, so the full plot set is produced. At this
 coarse step the explicit methods diverge within the first ~10–15 steps (guard-truncated) at every
@@ -54,6 +67,20 @@ precision, while implicit midpoint and Crank–Nicolson keep the energy error ne
 RK4 drifts only mildly. Because this run now shares the short run's `t ≤ 100` horizon, the Float16
 implicit methods no longer hit the time-grid saturation that breaks them on the far longer
 oscillator/pendulum coarse runs.
+
+### Solution error
+
+![Solution error, Euler methods](figures/toda_lattice_solution_error_dt_1.0_euler.png)
+
+![Solution error, other methods](figures/toda_lattice_solution_error_dt_1.0_other.png)
+
+![Solution error, Gauss(2) variants](figures/toda_lattice_solution_error_dt_1.0_gauss2.png)
+
+The guard-truncated explicit methods lose the reference within the first few steps, while the
+implicit-midpoint, Crank–Nicolson and Gauss(2) methods keep the coarse-step trajectory error
+controlled over the full horizon.
+
+### Phase-space trajectory
 
 ![Phase-space trajectory, Euler methods](figures/toda_lattice_solution_dt_1.0_euler.png)
 

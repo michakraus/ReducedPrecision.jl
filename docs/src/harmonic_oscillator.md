@@ -14,22 +14,30 @@ precisions and pass the precision-purity gate.
 
 ![Energy error, other methods](figures/harmonic_oscillator_energy_error_dt_0.1_other.png)
 
+![Energy error, Gauss(2) variants](figures/harmonic_oscillator_energy_error_dt_0.1_gauss2.png)
+
 The qualitative picture is textbook: **explicit Euler** grows without bound, **implicit Euler**
 dissipates towards a constant relative error of order one, and the **symplectic Euler** methods keep
 a *bounded, oscillating* energy error. Among the higher-order methods, implicit midpoint and
 Crank–Nicolson nearly conserve energy, with their noise floor set by the precision
 (≈ `1e-2` for Float16, `1e-6` for Float32, `1e-15` for Float64), while explicit midpoint drifts and
-RK4 sits in between.
+RK4 sits in between. The four partitioned Gauss(2) variants differ only in implementation detail —
+symplectic-by-construction (`SPRK`) versus by-duplication (`PRK`), and whether the rounding-error
+compensation coefficients ``â, b̂, ĉ`` are retained or zeroed; on this linear system the four are
+almost indistinguishable, and the differences grow on the nonlinear problems.
 
-### Partitioned Gauss(2) variants
+### Solution error
 
-![Energy error, Gauss(2) variants](figures/harmonic_oscillator_energy_error_dt_0.1_gauss2.png)
+![Solution error, Euler methods](figures/harmonic_oscillator_solution_error_dt_0.1_euler.png)
 
-The third comparison group holds four flavours of the 2-stage Gauss (partitioned midpoint) rule
-that differ only in implementation detail — symplectic-by-construction (`SPRK`) versus
-by-duplication (`PRK`), and whether the rounding-error compensation coefficients ``â, b̂, ĉ`` are
-retained or zeroed. On this linear system the four are almost indistinguishable; the differences
-grow on the nonlinear problems.
+![Solution error, other methods](figures/harmonic_oscillator_solution_error_dt_0.1_other.png)
+
+![Solution error, Gauss(2) variants](figures/harmonic_oscillator_solution_error_dt_0.1_gauss2.png)
+
+Measured against the analytic solution, the trajectory error mirrors the energy behaviour: the
+symplectic Euler methods keep a *bounded, oscillating* error (≈ `1e-2`), explicit Euler grows and
+implicit Euler saturates near order one, while the higher-order and Gauss(2) methods stay well below
+the Euler pair. Reduced precision mainly raises the noise floor rather than changing the ranking.
 
 ### Phase-space trajectory
 
@@ -45,15 +53,33 @@ circle, explicit Euler spirals **outward**, and implicit Euler spirals **inward*
 
 ## Long scenario (Δt = 1, t ≤ 10 000)
 
+### Energy error
+
 ![Energy error, Euler methods](figures/harmonic_oscillator_energy_error_dt_1.0_euler.png)
 
 ![Energy error, other methods](figures/harmonic_oscillator_energy_error_dt_1.0_other.png)
 
+![Energy error, Gauss(2) variants](figures/harmonic_oscillator_energy_error_dt_1.0_gauss2.png)
+
 At the coarse step and long horizon the contrast is dramatic: explicit Euler and explicit midpoint
 diverge exponentially (reaching ≈ `1e300` in Float64, clipped at the plot's `1e5` ceiling), while
-the symplectic methods and the implicit midpoint / Crank–Nicolson rules remain bounded over the
-*entire* ``10^4`` time units. In Float16 the implicit methods fail once the time grid can no longer
-resolve `Δt` (see [Findings](@ref)).
+the symplectic methods and the implicit midpoint / Crank–Nicolson rules — and the partitioned
+Gauss(2) variants — remain bounded over the *entire* ``10^4`` time units. In Float16 the implicit
+methods fail once the time grid can no longer resolve `Δt` (see [Findings](@ref)).
+
+### Solution error
+
+![Solution error, Euler methods](figures/harmonic_oscillator_solution_error_dt_1.0_euler.png)
+
+![Solution error, other methods](figures/harmonic_oscillator_solution_error_dt_1.0_other.png)
+
+![Solution error, Gauss(2) variants](figures/harmonic_oscillator_solution_error_dt_1.0_gauss2.png)
+
+Over the long horizon the divergent explicit methods leave the analytic reference entirely, whereas
+the bounded symplectic, implicit-midpoint and Gauss(2) methods retain a usable trajectory error for
+the full ``10^4`` time units at Float32/Float64.
+
+### Phase-space trajectory
 
 ![Phase-space trajectory, Euler methods](figures/harmonic_oscillator_solution_dt_1.0_euler.png)
 

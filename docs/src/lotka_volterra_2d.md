@@ -30,15 +30,33 @@ fine structure — CMDVI in particular follows a distinct curve. At **Float16** 
 solves hit the same half-precision `NaN`-direction breakdown seen on the other stiff problems, while
 implicit midpoint and CMDVI still run.
 
+### Solution error
+
+![Solution error, variational integrators](figures/lotka_volterra_2d_solution_error_dt_0.01_variational.png)
+
+Against the `Gauss(8)` reference the four variants keep a small trajectory error at Float32/Float64,
+with CMDVI again separating from the others; at Float16 only the surviving methods contribute.
+
 ### Configuration-space trajectory
 
 ![Trajectory, variational integrators](figures/lotka_volterra_2d_solution_dt_0.01_variational.png)
 
 ## Coarse scenario (Δt = 0.1, t ≤ 100)
 
+### Energy error
+
 ![Energy error, variational integrators](figures/lotka_volterra_2d_energy_error_dt_0.1_variational.png)
 
 At the coarser step and longer horizon the differences between the variational integrators, and the
 effect of precision on their long-time energy behaviour, are accentuated.
+
+### Solution error
+
+![Solution error, variational integrators](figures/lotka_volterra_2d_solution_error_dt_0.1_variational.png)
+
+Over the longer horizon the trajectory error against the reference likewise separates the variants,
+exposing how each variational integrator accumulates error at the coarse step.
+
+### Configuration-space trajectory
 
 ![Trajectory, variational integrators](figures/lotka_volterra_2d_solution_dt_0.1_variational.png)
