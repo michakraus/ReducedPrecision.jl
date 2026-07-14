@@ -172,20 +172,40 @@ drops cleanly per precision (e.g. oscillator: Float16 ~1e-2 → Float32 ~1e-6 �
   once `ulp(t) ≥ Δt` (`t + Δt == t`), which makes the implicit methods' Hermite initial guess throw
   `ArgumentError: t₀ and t₁ … identical`. The onset depends on Δt: for Δt = 1 it is `t ≈ 2048` (integers
   stop being exactly representable); for Δt = 0.1 it is already `t ≈ 100`.
-  - **`capped_final_time(T, t₁; cap = 2000)`** (in `study.jl`, exported) restricts the **Float16** final
-    time to `cap` (default 2000, just below the Δt = 1 saturation point) and leaves Float32/Float64
-    unchanged. Applied in `harmonic_oscillator_longtime.jl` / `pendulum_longtime.jl` (Δt = 1,
-    t ≤ 10_000): **every implicit method now runs at Float16** (was all `[skip]` with the `t₀ == t₁`
-    error) over t ≤ 2000, while the higher precisions keep the full t ≤ 10_000 horizon. The explicit
-    Euler/midpoint methods still diverge early there — genuine instability, not saturation (guard-truncated).
-  - Support machinery: `solution_error` now derives the reference-refinement factor from the two
-    **timesteps** (not the length ratio), so a capped Float16 run (shorter horizon) is compared against
-    the matching leading portion of the full-horizon reference; `_plot_grid` uses **per-panel** x-limits
-    so the shorter Float16 panel is not stretched to the longer precisions' horizon.
-  - **Not covered by the 2000 cap:** the *short* HO/pendulum scripts (Δt = 0.1, t ≤ 1000) — their final
-    time is below 2000 so the rule leaves them alone, yet they saturate at t ≈ 100 and their Float16
-    implicit runs still `[skip]`. Fixing those would need a Δt-aware cap (≈ 100 for Δt = 0.1), not a
-    fixed 2000; left as-is per the "final time > 2000" scope.
+  - **`capped_final_time(T, t₁, Δt)`** (in `study.jl`, exported) is **Δt-aware**: it walks the exact
+    grid the solution stores (`GeometricSolutions.TimeSeries` backs it with `tbegin:Δt:tend`) and returns
+    the largest final time whose grid is strictly increasing in `T` — i.e. the last point before the
+    first saturation collision (or `t₁` if the grid stays resolvable, always so for Float32/Float64 at
+    these horizons). It also backs off the endpoint when the rebuilt `StepRangeLen` would pin a colliding
+    last point. Resulting Float16 caps: **128.0** for the short scripts (Δt = 0.1) and **2048.0** for the
+    longtime scripts (Δt = 1); both grids are verified collision-free.
+  - Applied in **all four** HO/pendulum scripts (`harmonic_oscillator.jl`, `pendulum.jl`, and their
+    `*_longtime.jl`): **every implicit method now runs at Float16** (Implicit Midpoint / Euler /
+    Crank-Nicolson / all four Gauss(2) variants — previously all `[skip]` with the `t₀ == t₁` error),
+    while Float32/Float64 keep their full horizon (t ≤ 1000 short, t ≤ 10_000 longtime). Explicit
+    Euler/midpoint still diverge — genuine instability, not saturation (guard-truncated).
+  - Support machinery: `solution_error` derives the reference-refinement factor from the two **timesteps**
+    (not the length ratio), so a capped Float16 run (shorter horizon) is compared against the matching
+    leading portion of the full-horizon reference; `_plot_grid` uses **per-panel** x-limits so the shorter
+    Float16 panel is not stretched to the longer precisions' horizon.
+  - **Upstream `reset!` fix (GeometricIntegratorsBase 0.4.0, commit `b60654d`) — verified.** The step
+    reset changed from *accumulating* (`solstep.t += Δt`, done inside `integrate!(solstep,int)`) to
+    *setting* the canonical grid time (`reset!(solstep, timesteps(sol)[n])`, done in the outer loop).
+    `study.jl`'s `integrate_bounded` loop mirrors this (`reset!(solstep, timesteps(sol)[n])` before
+    `integrate!`) — it REQUIRES 0.4.0 (on 0.3.x `reset!` took a Δt and would mis-advance). Verified via
+    `scripts/experiments/verify_reset_fix.jl`: the fix is correct and all 167 tests + scripts pass under
+    0.4.0, **but it does NOT remove the need for the Float16 cap**. The long-horizon failure is a Float16
+    *representability* limit, not an accumulation artifact: the canonical grid `0:1:10000` collected in
+    Float16 itself has 5678 collisions (first at t = 2048, where consecutive integers stop being
+    representable), so at the full t ≤ 10000 horizon Implicit Midpoint / Crank-Nicolson still throw
+    `t₀ and t₁ … identical`. Capped at t ≤ 2000 the grid has 0 collisions and everything runs. So the
+    fix (correct clock tracking) and `capped_final_time` (Float16 ≤ 2000) are complementary; both kept.
+  - **Upstream deps released; committed against the registry.** GeometricIntegratorsBase 0.4.0 and
+    GeometricIntegrators 0.16.5+ (registry resolves 0.16.6) are released; `[compat]` is `GIB = "0.4"`,
+    `GI = "0.16.5"`. All `[sources]` dev-links removed and the transient `NonlinearIntegrators` dep (added
+    by `Pkg.develop`, never actually used) dropped. `study.jl`'s `integrate_bounded` loop uses the 0.4.0
+    API `reset!(solstep, timesteps(sol)[n])` (set canonical grid time; the old `integrate!(solstep,int)`
+    internal `t += Δt` reset is gone in 0.4.0). Bump GIB compat past 0.4 only after re-checking that loop.
 - **Float16 double pendulum:** the implicit methods fail with "NaN in direction vector" — a real
   Float16 instability for this stiff, dimensional (g = 9.8), chaotic system. Using the trust-region
   `DogLeg` solver (the default) instead of `Newton` improves robustness generally but does **not**

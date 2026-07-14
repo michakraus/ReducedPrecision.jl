@@ -9,8 +9,10 @@ using GeometricIntegrators: Gauss, integrate
 using GeometricProblems.Pendulum: podeproblem, hamiltonian
 import GeometricProblems.Pendulum as PD
 
-# Horizon capped at t = 100 (nt = 1000) so Float16 can resolve the time grid at Δt = 0.1
-# (see harmonic_oscillator.jl for the rationale).
+# Nominal horizon t = 1000 (nt = 10_000) at Δt = 0.1. The Float16 final time is capped to the last
+# resolvable grid point via `capped_final_time` (the Float16 grid saturates at t ≈ 128 for Δt = 0.1,
+# which breaks the implicit methods' Hermite initial guess); see harmonic_oscillator.jl. Float32/
+# Float64 keep the full t ≤ 1000 horizon.
 const t₀ = 0.0
 const Δt = 0.1
 const nt = 10_000
@@ -19,7 +21,8 @@ const t₁ = nt * Δt
 # GeometricProblems v0.7.0 dropped the `podeproblem(::Type{T})` precision constructor, so the
 # T-typed initial conditions are built here from the module defaults.
 make_problem(::Type{T}) where {T} =
-    podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
+    podeproblem(T.(PD.q₀), T.(PD.p₀);
+        timespan = (T(t₀), T(capped_final_time(T, t₁, Δt))), timestep = T(Δt))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 

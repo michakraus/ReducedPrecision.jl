@@ -17,7 +17,7 @@ const t₁ = nt * Δt
 
 make_problem(::Type{T}) where {T} =
     podeproblem(T.(HO.q₀), T.(HO.p₀);
-        timespan = (T(t₀), T(capped_final_time(T, t₁))), timestep = T(Δt))
+        timespan = (T(t₀), T(capped_final_time(T, t₁, Δt))), timestep = T(Δt))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 

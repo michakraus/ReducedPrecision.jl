@@ -9,10 +9,11 @@ using ReducedPrecision
 using GeometricProblems.HarmonicOscillator: podeproblem, hamiltonian, exact_solution
 import GeometricProblems.HarmonicOscillator as HO
 
-# Horizon capped at t = 100 (nt = 1000): still many oscillation periods, but within the
-# time range Float16 can resolve at Δt = 0.1 (ulp(100) ≈ 0.06 < Δt). A longer horizon makes
-# successive Float16 time stamps indistinguishable, which breaks the implicit methods'
-# Hermite initial guess (t₀ == t₁).
+# Nominal horizon t = 1000 (nt = 10_000) at Δt = 0.1. In Float16 the time grid saturates far
+# earlier than that (successive stamps become indistinguishable once ulp(t) ≥ Δt, i.e. around
+# t ≈ 128 for Δt = 0.1), which breaks the implicit methods' Hermite initial guess (t₀ == t₁). The
+# Float16 final time is therefore capped to the last resolvable grid point via `capped_final_time`
+# (Δt-aware); Float32/Float64 keep the full t ≤ 1000 horizon.
 const t₀ = 0.0
 const Δt = 0.1
 const nt = 10_000
@@ -22,7 +23,8 @@ const t₁ = nt * Δt
 # GeometricProblems v0.7.0 the `podeproblem(::Type{T})` precision constructor is gone, so the
 # T-typed initial conditions are built here from the module defaults.
 make_problem(::Type{T}) where {T} =
-    podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
+    podeproblem(T.(HO.q₀), T.(HO.p₀);
+        timespan = (T(t₀), T(capped_final_time(T, t₁, Δt))), timestep = T(Δt))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 

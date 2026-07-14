@@ -1,20 +1,43 @@
 # Running the method × precision sweep.
 
 """
-    capped_final_time(T, t₁; cap = 2000)
+    capped_final_time(T, t₁, Δt)
 
-Final integration time for precision `T`: `t₁` as given, except restricted to `cap` for `Float16`
-when `t₁ > cap`. Beyond `t ≈ 2048` the `Float16` time grid saturates (`t + Δt == t`, since integers
-are no longer exactly representable), which stalls the integration and breaks the implicit methods'
-initial guess. Capping the horizon at `cap` (default 2000, safely below that point) keeps the
-`Float16` runs on a resolvable time grid so the methods actually advance; higher precisions are
-returned unchanged. Use it in a `make_problem(T)` closure:
+Largest final integration time `≤ t₁` whose time grid `0, Δt, 2Δt, …` is still strictly increasing
+in precision `T`. A reduced-precision grid *saturates* once the spacing `Δt` drops below the local
+resolution (`ulp(t) ≥ Δt`): successive grid points then round to the same value (`t + Δt == t`),
+which stalls the integration and makes the implicit methods' Hermite initial guess throw
+(`t₀ == t₁`). The saturation onset is **Δt-dependent** — in `Float16`, `t ≈ 2048` for `Δt = 1` but
+already `t ≈ 128` for `Δt = 0.1` — so the cap is derived from the actual `T`-grid rather than a fixed
+constant: it returns the time just before the first collision, or `t₁` if the grid stays resolvable
+over the whole horizon (always the case for `Float32`/`Float64` at these horizons). Use it in a
+`make_problem(T)` closure:
 
     make_problem(::Type{T}) where {T} =
-        podeproblem(...; timespan = (T(t₀), T(capped_final_time(T, t₁))), timestep = T(Δt))
+        podeproblem(...; timespan = (T(t₀), T(capped_final_time(T, t₁, Δt))), timestep = T(Δt))
 """
-capped_final_time(::Type{T}, t₁; cap = 2000) where {T} = t₁
-capped_final_time(::Type{Float16}, t₁; cap = 2000) = t₁ > cap ? oftype(t₁, cap) : t₁
+function capped_final_time(::Type{T}, t₁, Δt) where {T}
+    # `GeometricSolutions.TimeSeries` backs the grid with the range `tbegin:Δt:tend`, so mirror that
+    # construction. First find where the full-horizon grid stops advancing (`grid[i] == grid[i-1]`,
+    # the saturation point).
+    step = T(Δt)
+    tbeg = T(zero(t₁))
+    full = tbeg:step:T(t₁)
+    icut = length(full)
+    for i in 2:length(full)
+        full[i] <= full[i-1] && (icut = i - 1; break)
+    end
+    # The solution rebuilds the grid as `tbeg:step:tend`; a `StepRangeLen` pins its endpoint, which
+    # can re-collide with its predecessor even though the same value sits cleanly *inside* the
+    # full-horizon range. Return the largest endpoint whose rebuilt grid is strictly increasing —
+    # everything at or below `icut` already has a collision-free interior, so only the endpoint is
+    # in question (at most a step or two back).
+    for i in icut:-1:1
+        g = tbeg:step:full[i]
+        (length(g) < 2 || g[end] > g[end-1]) && return Float64(full[i])
+    end
+    return Float64(tbeg)
+end
 
 """
     Run
@@ -88,6 +111,7 @@ function integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(), line
 
     diverged = nothing
     for n in 1:nt
+        reset!(solstep, timesteps(sol)[n])
         integrate!(solstep, integrator)     # advance one step
         copy!(sol, curstate, n)             # store it into the solution
         q = sol.q[n]
