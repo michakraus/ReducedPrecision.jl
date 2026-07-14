@@ -70,12 +70,14 @@ end
 function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods, colors, precisions = PRECISIONS)
     np = length(precisions)
 
-    # First pass: collect each panel's (spec, t, y) series and the global finite range.
+    # First pass: collect each panel's (spec, t, y) series, its x-range and the global finite range.
     finite_pos = Float64[]
-    xr = nothing
     panels = Vector{Any}[]
+    xrs = Any[]                                            # per-panel x-range (horizons may differ
+                                                           # across precisions, e.g. a capped Float16)
     for T in precisions
         series = Any[]
+        xr = nothing
         for spec in methods
             run = _find_run(runs, spec.name, T)
             (run === nothing || run.sol === nothing) && continue
@@ -84,11 +86,13 @@ function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods, colors, prec
             append!(finite_pos, filter(isfinite, y))
             # Exact integration interval from the problem itself (0 and t₁ are exactly
             # representable in every precision), not the accumulated grid endpoint which
-            # rounds slightly short/long at low precision.
+            # rounds slightly short/long at low precision. Taken per precision, since a Float16
+            # horizon capped by `capped_final_time` is shorter than the higher-precision panels'.
             xr === nothing && (xr = Float64.(timespan(run.prob)))
             push!(series, (spec, timevalues(run.sol), y))
         end
         push!(panels, series)
+        push!(xrs, xr)
     end
 
     yl = _shared_ylims(finite_pos)
@@ -109,7 +113,8 @@ function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods, colors, prec
             )
         end
         ylims!(ax, yl...)                                  # same y-limits for every panel
-        xr !== nothing && xlims!(ax, xr[1], xr[2])         # exact time interval, no padding
+        xr = xrs[j]                                        # this panel's own time interval
+        xr !== nothing && xlims!(ax, xr[1], xr[2])         # exact interval, no padding
     end
 
     _legend_below!(fig, methods, colors, np)

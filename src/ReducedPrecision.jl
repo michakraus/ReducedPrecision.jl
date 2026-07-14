@@ -38,7 +38,7 @@ using CairoMakie
 export PRECISIONS, MethodSpec, GEOMETRIC_METHODS, NONGEOMETRIC_METHODS, ALL_METHODS
 export EULER_METHODS, OTHER_METHODS, GAUSS2_METHODS, METHOD_GROUPS
 export LV2D_METHODS, LV4D_METHODS, LV2D_GROUPS, LV4D_GROUPS
-export Run, run_study, integrate_bounded, assert_precision, verify_precision
+export Run, run_study, integrate_bounded, assert_precision, verify_precision, capped_final_time
 export DogLeg, Newton, StrongWolfe, Backtracking
 export HermiteExtrapolation, MidpointExtrapolation
 export energy_error, solution_error, timevalues

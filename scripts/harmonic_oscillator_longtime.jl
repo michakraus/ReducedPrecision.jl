@@ -1,10 +1,10 @@
 # Reduced-precision study: harmonic oscillator, long-time / coarse-step variant.
 #
 # Same pipeline as harmonic_oscillator.jl but with a coarse timestep Δt = 1 and a long
-# horizon t = 10_000 (nt = 10_000 steps), stressing long-time stability. Note that at this
-# horizon low precisions cannot resolve the time grid (in Float16, t + 1 == t once t exceeds
-# ~2048), so implicit methods that rely on distinct successive times may fail there — those
-# runs are caught and reported as skips.
+# horizon t = 10_000 (nt = 10_000 steps), stressing long-time stability. At this horizon the
+# Float16 time grid saturates (t + 1 == t once t exceeds ~2048), which stalls the integration, so
+# the Float16 final time is capped at 2000 via `capped_final_time` — keeping those runs on a
+# resolvable grid. Float32/Float64 keep the full t ≤ 10_000 horizon.
 
 using ReducedPrecision
 using GeometricProblems.HarmonicOscillator: podeproblem, hamiltonian, exact_solution
@@ -16,7 +16,8 @@ const nt = 10_000
 const t₁ = nt * Δt
 
 make_problem(::Type{T}) where {T} =
-    podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
+    podeproblem(T.(HO.q₀), T.(HO.p₀);
+        timespan = (T(t₀), T(capped_final_time(T, t₁))), timestep = T(Δt))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 

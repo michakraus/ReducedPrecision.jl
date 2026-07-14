@@ -1,10 +1,13 @@
 # Reduced-precision study: mathematical pendulum, long-time / coarse-step variant.
 #
 # Same pipeline as pendulum.jl but with a coarse timestep Δt = 1 and a long horizon
-# t = 10_000 (nt = 10_000 steps). The solution error is measured against a Float64 Gauss(8)
+# t = 10_000 (nt = 10_000 steps). At this horizon the Float16 time grid saturates (t + 1 == t once
+# t exceeds ~2048), so the Float16 final time is capped at 2000 via `capped_final_time`; Float32/
+# Float64 keep the full t ≤ 10_000 horizon. The solution error is measured against a Float64 Gauss(8)
 # reference computed at the *fine* step (Δt_ref = 0.1, as in the short scenario) and subsampled
-# onto the coarse grid, so the reference is trustworthy independent of the coarse step; the
-# reference integration is guarded so the energy-error plot is still produced if it fails.
+# onto each run's grid, so the reference is trustworthy independent of the coarse step and of the
+# capped Float16 horizon; the reference integration is guarded so the energy-error plot is still
+# produced if it fails.
 
 using ReducedPrecision
 using GeometricIntegrators: Gauss, integrate
@@ -20,7 +23,8 @@ const Δt_ref = 0.1   # fine reference step (matches the short scenario)
 # GeometricProblems v0.7.0 dropped the `podeproblem(::Type{T})` precision constructor, so the
 # T-typed initial conditions are built here from the module defaults.
 make_problem(::Type{T})   where {T} =
-    podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
+    podeproblem(T.(PD.q₀), T.(PD.p₀);
+        timespan = (T(t₀), T(capped_final_time(T, t₁))), timestep = T(Δt))
 make_reference(::Type{T}) where {T} =
     podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt_ref))
 

@@ -75,24 +75,30 @@ end
 
 Euclidean norm of the state error `‖(qₙ,pₙ) − (qₙ,pₙ)_ref‖` at each time step. Both solutions
 are materialized to `Float64` before comparison, so `reference` may be at a different precision
-than `sol` (e.g. a Float64 high-order reference). If `reference` was integrated on a **finer**
-time grid that refines `sol`'s grid (an integer number of reference steps per solution step,
-sharing `t₀`), it is subsampled onto `sol`'s grid before the index-by-index comparison — this is
-how the coarse-step scenarios compare against a reference computed at the fine step.
+than `sol` (e.g. a Float64 high-order reference). If `reference` was integrated on a **finer** time
+grid that refines `sol`'s grid (an integer number of reference steps per solution step, sharing
+`t₀`), it is subsampled onto `sol`'s grid before the index-by-index comparison — this is how the
+coarse-step scenarios compare against a reference computed at the fine step. The refinement factor
+is taken from the two **timesteps** (not the length ratio), so a `sol` covering a *shorter* horizon
+than the reference — e.g. a `Float16` run whose final time was capped by [`capped_final_time`](@ref)
+— is correctly compared against the matching leading portion of the reference.
 """
 function solution_error(sol, reference)
     q  = Float64.(Array(sol.q));       p  = Float64.(Array(sol.p))
     qr = Float64.(Array(reference.q)); pr = Float64.(Array(reference.p))
     nsol = size(q, 2); nref = size(qr, 2)
     if nref > nsol
-        # reference on a finer grid: pick the nsol evenly-spaced points (endpoints included) that
-        # line up with the solution's output times. Guard that the reference actually *refines*
-        # the solution grid (integer steps per output step, to within fp rounding of the ratio),
-        # so a mismatched reference is rejected rather than silently mis-compared. The rounding
-        # tolerance also absorbs the ±1-step ambiguity of a non-exact fine Δt (e.g. 0.1 in Float64).
-        ratio = (nref - 1) / (nsol - 1)
-        @assert isapprox(ratio, round(ratio); rtol = 1e-3) "reference grid (nref=$nref) does not refine the solution grid (nsol=$nsol)"
-        idx = round.(Int, range(1, nref; length = nsol))
+        # reference on a finer (and possibly longer) grid: how many reference substeps fall in one
+        # solution step is fixed by the ratio of their timesteps, NOT by (nref-1)/(nsol-1) — the
+        # latter is only equal when the two grids span the same horizon, which fails once sol's
+        # horizon is capped below the reference's. Guard that the reference genuinely refines the
+        # solution step (integer ratio, to within fp rounding — this also absorbs a non-exact fine
+        # Δt such as 0.1 in Float64) and that it covers sol's whole horizon.
+        k = Float64(timestep(sol)) / Float64(timestep(reference))
+        kr = round(Int, k)
+        @assert kr ≥ 1 && isapprox(k, kr; rtol = 1e-3) "reference timestep does not refine the solution timestep (ratio = $k)"
+        idx = 1 .+ (0:nsol-1) .* kr
+        @assert idx[end] ≤ nref "reference grid (nref=$nref) does not cover the solution horizon (needs index $(idx[end]))"
         qr = qr[:, idx]; pr = pr[:, idx]
     end
     @assert size(q, 2) == size(qr, 2) "solution and reference have different lengths"

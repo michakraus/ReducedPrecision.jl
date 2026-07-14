@@ -1,6 +1,22 @@
 # Running the method × precision sweep.
 
 """
+    capped_final_time(T, t₁; cap = 2000)
+
+Final integration time for precision `T`: `t₁` as given, except restricted to `cap` for `Float16`
+when `t₁ > cap`. Beyond `t ≈ 2048` the `Float16` time grid saturates (`t + Δt == t`, since integers
+are no longer exactly representable), which stalls the integration and breaks the implicit methods'
+initial guess. Capping the horizon at `cap` (default 2000, safely below that point) keeps the
+`Float16` runs on a resolvable time grid so the methods actually advance; higher precisions are
+returned unchanged. Use it in a `make_problem(T)` closure:
+
+    make_problem(::Type{T}) where {T} =
+        podeproblem(...; timespan = (T(t₀), T(capped_final_time(T, t₁))), timestep = T(Δt))
+"""
+capped_final_time(::Type{T}, t₁; cap = 2000) where {T} = t₁
+capped_final_time(::Type{Float16}, t₁; cap = 2000) = t₁ > cap ? oftype(t₁, cap) : t₁
+
+"""
     Run
 
 Result of a single (method, precision) integration.

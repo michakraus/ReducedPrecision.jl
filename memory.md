@@ -168,10 +168,24 @@ drops cleanly per precision (e.g. oscillator: Float16 ~1e-2 → Float32 ~1e-6 �
 
 ## Genuine reduced-precision findings (not bugs)
 
-- **Float16 + long horizon:** with `t` up to 1000, Float16 cannot resolve successive time stamps
-  (ulp(1000) ≈ 0.5 ≫ Δt = 0.1), breaking the implicit methods' Hermite initial guess
-  (`t₀ == t₁`). Horizon capped at `t = 100` (nt = 1000, still many periods) so the full
-  method × precision matrix is populated.
+- **Float16 + long horizon (time-grid saturation).** Float16 cannot resolve successive time stamps
+  once `ulp(t) ≥ Δt` (`t + Δt == t`), which makes the implicit methods' Hermite initial guess throw
+  `ArgumentError: t₀ and t₁ … identical`. The onset depends on Δt: for Δt = 1 it is `t ≈ 2048` (integers
+  stop being exactly representable); for Δt = 0.1 it is already `t ≈ 100`.
+  - **`capped_final_time(T, t₁; cap = 2000)`** (in `study.jl`, exported) restricts the **Float16** final
+    time to `cap` (default 2000, just below the Δt = 1 saturation point) and leaves Float32/Float64
+    unchanged. Applied in `harmonic_oscillator_longtime.jl` / `pendulum_longtime.jl` (Δt = 1,
+    t ≤ 10_000): **every implicit method now runs at Float16** (was all `[skip]` with the `t₀ == t₁`
+    error) over t ≤ 2000, while the higher precisions keep the full t ≤ 10_000 horizon. The explicit
+    Euler/midpoint methods still diverge early there — genuine instability, not saturation (guard-truncated).
+  - Support machinery: `solution_error` now derives the reference-refinement factor from the two
+    **timesteps** (not the length ratio), so a capped Float16 run (shorter horizon) is compared against
+    the matching leading portion of the full-horizon reference; `_plot_grid` uses **per-panel** x-limits
+    so the shorter Float16 panel is not stretched to the longer precisions' horizon.
+  - **Not covered by the 2000 cap:** the *short* HO/pendulum scripts (Δt = 0.1, t ≤ 1000) — their final
+    time is below 2000 so the rule leaves them alone, yet they saturate at t ≈ 100 and their Float16
+    implicit runs still `[skip]`. Fixing those would need a Δt-aware cap (≈ 100 for Δt = 0.1), not a
+    fixed 2000; left as-is per the "final time > 2000" scope.
 - **Float16 double pendulum:** the implicit methods fail with "NaN in direction vector" — a real
   Float16 instability for this stiff, dimensional (g = 9.8), chaotic system. Using the trust-region
   `DogLeg` solver (the default) instead of `Newton` improves robustness generally but does **not**
