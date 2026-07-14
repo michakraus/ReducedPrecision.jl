@@ -15,7 +15,7 @@ import GeometricProblems.HarmonicOscillator as HO
 # Hermite initial guess (t₀ == t₁).
 const t₀ = 0.0
 const Δt = 0.1
-const nt = 1_000
+const nt = 10_000
 const t₁ = nt * Δt
 
 # Partitioned form at precision T, with initial conditions *and* time all in T. As of
@@ -36,13 +36,13 @@ reference = exact_solution(make_problem(Float64))
 
 plot_energy_error(runs, hamiltonian;
     path  = joinpath(plotdir, "harmonic_oscillator_energy_error_dt_$(Δt).png"),
-    title = "Harmonic Oscillator — Relative Energy Error (Δt = 0.1, t ≤ 100)")
+    title = "Harmonic Oscillator — Relative Energy Error (Δt = 0.1, t ≤ 10^4)")
 
 plot_solution_error(runs, reference;
     path  = joinpath(plotdir, "harmonic_oscillator_solution_error_dt_$(Δt).png"),
-    title = "Harmonic Oscillator — Solution Error (Δt = 0.1, t ≤ 100, vs. analytic)")
+    title = "Harmonic Oscillator — Solution Error (Δt = 0.1, t ≤ 10^4, vs. analytic)")
 
 plot_solution(runs; reference = reference,
     path   = joinpath(plotdir, "harmonic_oscillator_solution_dt_$(Δt).png"),
-    title  = "Harmonic Oscillator — Phase-Space Trajectory (Δt = 0.1, t ≤ 100)",
+    title  = "Harmonic Oscillator — Phase-Space Trajectory (Δt = 0.1, t ≤ 10^4)",
     xlabel = "q", ylabel = "p")

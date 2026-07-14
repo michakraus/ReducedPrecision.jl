@@ -13,7 +13,7 @@ import GeometricProblems.Pendulum as PD
 # (see harmonic_oscillator.jl for the rationale).
 const t₀ = 0.0
 const Δt = 0.1
-const nt = 1_000
+const nt = 10_000
 const t₁ = nt * Δt
 
 # GeometricProblems v0.7.0 dropped the `podeproblem(::Type{T})` precision constructor, so the
@@ -32,13 +32,13 @@ reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, hamiltonian;
     path  = joinpath(plotdir, "pendulum_energy_error_dt_$(Δt).png"),
-    title = "Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 100)")
+    title = "Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 10^4)")
 
 plot_solution_error(runs, reference;
     path  = joinpath(plotdir, "pendulum_solution_error_dt_$(Δt).png"),
-    title = "Pendulum — Solution Error (Δt = 0.1, t ≤ 100, vs. Float64 Gauss(8))")
+    title = "Pendulum — Solution Error (Δt = 0.1, t ≤ 10^4, vs. Float64 Gauss(8))")
 
 plot_solution(runs; reference = reference,
     path   = joinpath(plotdir, "pendulum_solution_dt_$(Δt).png"),
-    title  = "Pendulum — Phase-Space Trajectory (Δt = 0.1, t ≤ 100)",
+    title  = "Pendulum — Phase-Space Trajectory (Δt = 0.1, t ≤ 10^4)",
     xlabel = "q", ylabel = "p")
