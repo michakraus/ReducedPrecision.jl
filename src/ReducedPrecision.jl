@@ -25,7 +25,8 @@ The implementation is split into logical units:
 module ReducedPrecision
 
 using GeometricIntegrators
-using GeometricIntegratorsBase: Solution, solutionstep, current
+using GeometricIntegratorsBase: Solution, solutionstep, current,
+    HermiteExtrapolation, MidpointExtrapolation
 import GeometricIntegratorsBase: initmethod, isimplicit, default_options
 using GeometricSolutions
 using GeometricBase
@@ -39,6 +40,7 @@ export EULER_METHODS, OTHER_METHODS, GAUSS2_METHODS, METHOD_GROUPS
 export LV2D_METHODS, LV4D_METHODS, LV2D_GROUPS, LV4D_GROUPS
 export Run, run_study, integrate_bounded, assert_precision, verify_precision
 export DogLeg, Newton, StrongWolfe, Backtracking
+export HermiteExtrapolation, MidpointExtrapolation
 export energy_error, solution_error, timevalues
 export plot_energy_error, plot_solution_error, plot_solution
 

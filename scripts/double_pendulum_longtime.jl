@@ -31,7 +31,12 @@ make_reference(::Type{T}) where {T} = _dp_problem(T, Δt_ref)
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
-runs = run_study(make_problem; solver = Newton(), linesearch = Backtracking(), max_iterations = 100)
+# See double_pendulum.jl: in Float16 the default HermiteExtrapolation initial guess fails on this
+# stiff system, so seed the Float16 solves with MidpointExtrapolation (higher precisions keep the
+# Hermite default, where Midpoint would regress the multi-stage methods).
+runs = run_study(make_problem;
+    solver = Newton(), linesearch = Backtracking(), max_iterations = 100,
+    initialguess = T -> T === Float16 ? MidpointExtrapolation() : nothing)
 
 verify_precision(runs)
 

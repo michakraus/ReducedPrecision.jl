@@ -43,16 +43,24 @@ nonlinear iterations per step (default `nothing` → the solver default of 1000)
 hopeless implicit solves at a coarse timestep bail out early instead of churning. Any override is
 forwarded alongside the integrator's `default_options` so `min_iterations`/`f_abstol` are preserved
 (passing any option kwarg otherwise replaces the whole default-option set).
+
+`initialguess` overrides the per-step initial guess (the extrapolation seeding the nonlinear solve)
+for implicit methods; the default `nothing` uses the method's own default (`HermiteExtrapolation()`
+for the Runge–Kutta / variational methods here). Pass `MidpointExtrapolation()` to seed each step by
+integrating one history point forward with the vector field instead of the two-point Hermite
+polynomial — this is more robust when the low-precision time grid saturates (`t₀ == t₁`), which
+breaks the Hermite guess. Ignored by explicit methods (they carry no solver).
 """
-function integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing)
+function integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing, initialguess = nothing)
     overrides = merge(
         linesearch     === nothing ? (;) : (; linesearch),
         max_iterations === nothing ? (;) : (; max_iterations),
     )
+    iguesskw = initialguess === nothing ? (;) : (; initialguess)
     integrator = if isimplicit(method) === true
         isempty(overrides) ?
-            GeometricIntegrator(problem, method; solver) :
-            GeometricIntegrator(problem, method; solver, default_options(method)..., overrides...)
+            GeometricIntegrator(problem, method; solver, iguesskw...) :
+            GeometricIntegrator(problem, method; solver, iguesskw..., default_options(method)..., overrides...)
     else
         GeometricIntegrator(problem, method)
     end
@@ -88,26 +96,35 @@ function integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(), line
 end
 
 """
-    run_study(make_problem; methods = ALL_METHODS, precisions = PRECISIONS, bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing)
+    run_study(make_problem; methods = ALL_METHODS, precisions = PRECISIONS, bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing, initialguess = nothing)
 
 Run every `method` at every `precision` on the problem produced by `make_problem(T)`.
 The problem is built once per precision and reused across methods (it is immutable input to
 `integrate`). Each integration is guarded by `integrate_bounded` (see there): divergent runs stop
 early rather than producing runaway errors. Integration failures (e.g. a non-convergent implicit
 solve that throws) are caught per run so a single failure does not abort the sweep. The implicit
-methods use `solver` (and, if given, `linesearch` / `max_iterations`) for the nonlinear solve (see
-[`integrate_bounded`](@ref)). Returns a `Vector{Run}`.
+methods use `solver` (and, if given, `linesearch` / `max_iterations` / `initialguess`) for the
+nonlinear solve (see [`integrate_bounded`](@ref)). Returns a `Vector{Run}`.
+
+`initialguess` may be an `Extrapolation` (or `nothing` for the method default) applied to every run,
+or a **callable** `T -> Extrapolation | nothing` resolved per precision. The latter is how a study
+uses a different initial guess only at a specific precision — e.g. `MidpointExtrapolation()` in
+`Float16` (where it rescues stiff implicit solves that the default `HermiteExtrapolation` fails on)
+and the method default elsewhere (where Midpoint would regress the multi-stage methods):
+
+    initialguess = T -> T === Float16 ? MidpointExtrapolation() : nothing
 """
-function run_study(make_problem; methods = ALL_METHODS, precisions = PRECISIONS, bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing)
+function run_study(make_problem; methods = ALL_METHODS, precisions = PRECISIONS, bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing, initialguess = nothing)
     runs = Run[]
     for T in precisions
         prob = make_problem(T)
+        iguess = initialguess isa Function ? initialguess(T) : initialguess
         for spec in methods
             sol = nothing
             err = nothing
             diverged = nothing
             try
-                sol, diverged = integrate_bounded(prob, spec.method; bound, solver, linesearch, max_iterations)
+                sol, diverged = integrate_bounded(prob, spec.method; bound, solver, linesearch, max_iterations, initialguess = iguess)
             catch e
                 err = sprint(showerror, e)
                 @warn "integration failed" method = spec.name precision = T

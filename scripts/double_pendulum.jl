@@ -32,7 +32,15 @@ end
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
-runs = run_study(make_problem; solver = Newton(), linesearch = Backtracking(), max_iterations = 100)
+# In Float16 the default HermiteExtrapolation initial guess breaks down on this stiff, chaotic
+# system (the implicit solves throw "NaN detected"). Seeding each step with MidpointExtrapolation
+# instead — which advances one history point with the vector field rather than needing a two-point
+# Hermite polynomial — rescues the Implicit Midpoint and Implicit Euler solves so they run to
+# completion. The higher precisions keep the Hermite default, where Midpoint would regress the
+# multi-stage (Gauss(2)) methods.
+runs = run_study(make_problem;
+    solver = Newton(), linesearch = Backtracking(), max_iterations = 100,
+    initialguess = T -> T === Float16 ? MidpointExtrapolation() : nothing)
 
 verify_precision(runs)
 
