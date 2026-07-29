@@ -3,6 +3,10 @@
 _poslog(v) = (v > 0 && isfinite(v)) ? v : NaN
 _finite_or_nan(v) = isfinite(v) ? Float64(v) : NaN
 
+# Panel title for a precision. `nameof`, not `string`: as of Julia 1.13 `BFloat16` lives in `Core`,
+# so `string(BFloat16)` prints the qualified "Core.BFloat16".
+_precision_label(::Type{T}) where {T} = string(nameof(T))
+
 # Locate the run for a given method name and precision (nothing if it was not run).
 function _find_run(runs, name, T)
     for run in runs
@@ -80,15 +84,18 @@ function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods, colors, prec
         xr = nothing
         for spec in methods
             run = _find_run(runs, spec.name, T)
-            (run === nothing || run.sol === nothing) && continue
+            run === nothing && continue
+            # Exact integration interval from the problem itself, not the accumulated grid endpoint
+            # which rounds slightly short/long at low precision. Taken per precision, since a study
+            # may give a precision a different horizon (and rounding Δt into T shifts the step count
+            # slightly, so the panels do not all end on exactly the same grid point). Read from the
+            # *problem*, so a panel whose every method failed still shows the interval it covered
+            # rather than falling back to Makie's autolimits.
+            xr === nothing && (xr = Float64.(timespan(run.prob)))
+            run.sol === nothing && continue
             y = _poslog.(seriesfun(run))
             all(isnan, y) && continue
             append!(finite_pos, filter(isfinite, y))
-            # Exact integration interval from the problem itself (0 and t₁ are exactly
-            # representable in every precision), not the accumulated grid endpoint which
-            # rounds slightly short/long at low precision. Taken per precision, since a Float16
-            # horizon capped by `capped_final_time` is shorter than the higher-precision panels'.
-            xr === nothing && (xr = Float64.(timespan(run.prob)))
             push!(series, (spec, timevalues(run.sol), y))
         end
         push!(panels, series)
@@ -103,7 +110,7 @@ function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods, colors, prec
             yscale = log10,
             xlabel = "t",
             ylabel = j == 1 ? ylabel : "",
-            title  = string(T),
+            title  = _precision_label(T),
         )
         for (spec, t, y) in panels[j]
             lines!(ax, t, y;
@@ -159,7 +166,8 @@ function _plot_trajectory_grid(runs, coordsfun, xlabel, ylabel, ptitle, path;
     fig = _grid_figure(np, ptitle)
 
     for (j, T) in enumerate(precisions)
-        ax = Axis(fig[1, j]; xlabel = xlabel, ylabel = j == 1 ? ylabel : "", title = string(T))
+        ax = Axis(fig[1, j];
+            xlabel = xlabel, ylabel = j == 1 ? ylabel : "", title = _precision_label(T))
         # Reference trajectory drawn first, as a black backdrop, so every method lies on top.
         if reference !== nothing
             rx, ry = coordsfun(reference)

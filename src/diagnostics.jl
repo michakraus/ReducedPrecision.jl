@@ -29,14 +29,14 @@ function verify_precision(runs)
     println("Verifying precision purity (datatype == timetype == requested precision):")
     for run in runs
         if run.sol === nothing
-            println("  [skip] $(run.method.name) @ $(run.precision): integration failed ($(run.error))")
+            println("  [skip] $(run.method.name) @ $(nameof(run.precision)): integration failed ($(run.error))")
             continue
         end
         assert_precision(run.prob, run.sol, run.precision)
         if run.diverged === nothing
-            println("  [ ok ] $(run.method.name) @ $(run.precision)")
+            println("  [ ok ] $(run.method.name) @ $(nameof(run.precision))")
         else
-            println("  [ ok ] $(run.method.name) @ $(run.precision) (diverged at step $(run.diverged); stopped)")
+            println("  [ ok ] $(run.method.name) @ $(nameof(run.precision)) (diverged at step $(run.diverged); stopped)")
         end
     end
     println("Precision verification passed for all successful runs.")
@@ -80,8 +80,8 @@ grid that refines `sol`'s grid (an integer number of reference steps per solutio
 `t₀`), it is subsampled onto `sol`'s grid before the index-by-index comparison — this is how the
 coarse-step scenarios compare against a reference computed at the fine step. The refinement factor
 is taken from the two **timesteps** (not the length ratio), so a `sol` covering a *shorter* horizon
-than the reference — e.g. a `Float16` run whose final time was capped by [`capped_final_time`](@ref)
-— is correctly compared against the matching leading portion of the reference.
+than the reference — as happens at reduced precision, where rounding `Δt` into `T` shifts the step
+count slightly — is correctly compared against the matching leading portion of the reference.
 """
 function solution_error(sol, reference)
     q  = Float64.(Array(sol.q));       p  = Float64.(Array(sol.p))
@@ -90,13 +90,15 @@ function solution_error(sol, reference)
     if nref > nsol
         # reference on a finer (and possibly longer) grid: how many reference substeps fall in one
         # solution step is fixed by the ratio of their timesteps, NOT by (nref-1)/(nsol-1) — the
-        # latter is only equal when the two grids span the same horizon, which fails once sol's
-        # horizon is capped below the reference's. Guard that the reference genuinely refines the
-        # solution step (integer ratio, to within fp rounding — this also absorbs a non-exact fine
-        # Δt such as 0.1 in Float64) and that it covers sol's whole horizon.
+        # latter is only equal when the two grids span the same horizon, which fails whenever sol's
+        # step count differs from the reference's. Guard that the reference genuinely refines the
+        # solution step (integer ratio, to within fp rounding) and that it covers sol's whole
+        # horizon. The tolerance has to absorb the rounding of the *coarse* Δt into the solution's
+        # precision: `BFloat16(0.1)` is 0.10009765625, i.e. 2⁻¹⁰ off, and the worst case at 8
+        # significand bits is 2⁻⁸ ≈ 0.4 % — while 1e-2 still rejects any genuinely non-integer ratio.
         k = Float64(timestep(sol)) / Float64(timestep(reference))
         kr = round(Int, k)
-        @assert kr ≥ 1 && isapprox(k, kr; rtol = 1e-3) "reference timestep does not refine the solution timestep (ratio = $k)"
+        @assert kr ≥ 1 && isapprox(k, kr; rtol = 1e-2) "reference timestep does not refine the solution timestep (ratio = $k)"
         idx = 1 .+ (0:nsol-1) .* kr
         @assert idx[end] ≤ nref "reference grid (nref=$nref) does not cover the solution horizon (needs index $(idx[end]))"
         qr = qr[:, idx]; pr = pr[:, idx]

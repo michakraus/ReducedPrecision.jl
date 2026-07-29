@@ -31,12 +31,10 @@ make_reference(::Type{T}) where {T} = _dp_problem(T, Δt_ref)
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
-# See double_pendulum.jl: in Float16 the default HermiteExtrapolation initial guess fails on this
-# stiff system, so seed the Float16 solves with MidpointExtrapolation (higher precisions keep the
-# Hermite default, where Midpoint would regress the multi-stage methods).
+# See double_pendulum.jl: the default HermiteExtrapolation guess needs no reduced-precision
+# workaround now that the solution step is advanced in a local time frame.
 runs = run_study(make_problem;
-    solver = Newton(), linesearch = Backtracking(), max_iterations = 100,
-    initialguess = T -> T === Float16 ? MidpointExtrapolation() : nothing)
+    solver = Newton(), linesearch = Backtracking(), max_iterations = 100)
 
 verify_precision(runs)
 
@@ -46,7 +44,7 @@ plot_energy_error(runs, hamiltonian;
 
 # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
 reference = try
-    integrate(make_reference(Float64), Gauss(8))
+    reference_solution(make_reference(Float64), Gauss(8))
 catch e
     @warn "reference integration failed; skipping solution-error plot" error = sprint(showerror, e)
     nothing

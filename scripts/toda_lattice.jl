@@ -47,7 +47,7 @@ plot_energy_error(runs, ham;
     title = "Toda Lattice — Relative Energy Error (Δt = 0.1, t ≤ 100)")
 
 # high-precision reference (Float64, high-order symplectic, same time grid)
-reference = integrate(make_problem(Float64), Gauss(8))
+reference = reference_solution(make_problem(Float64), Gauss(8))
 
 plot_solution_error(runs, reference;
     path  = joinpath(plotdir, "toda_lattice_solution_error_dt_$(Δt).png"),

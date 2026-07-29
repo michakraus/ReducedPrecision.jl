@@ -1,21 +1,27 @@
 # ReducedPrecision — project summary
 
 Analysis of geometric (symplectic) vs. non-geometric integrators run in varying floating-point
-precision (Float16, Float32, Float64) on example problems from GeometricProblems.
+precision (BFloat16, Float16, Float32, Float64) on example problems from GeometricProblems.
 
 ## What was built
 
 `ReducedPrecision` is a proper Julia package (`/Users/mkraus/Datashare/Julia/ReducedPrecision`):
 
-- **`Project.toml`** — package name/uuid + deps (`CairoMakie` + the Geometric* ecosystem),
-  resolved from the **registry** (no `[sources]`; `[compat]` pins the working versions). For local
-  work against the sibling checkouts, dev-link them into the git-ignored Manifest with
+- **`Project.toml`** — package name/uuid + deps (`CairoMakie`, `BFloat16s`, `NaNMath` + the Geometric*
+  ecosystem), all resolved from the **registry** (no `[sources]`; `[compat]` pins the working versions).
+  `GeometricIntegratorsBase` has a `0.4.2` lower bound because that is the release that added
+  `NormalizedHermiteExtrapolation`, which `src/initial_guess.jl` needs. For local work against the
+  sibling checkouts, dev-link them into the git-ignored Manifest with
   `pkg> dev ../GeometricBase ../GeometricEquations …`. Test-only `Test` via `[extras]`/`[targets]`.
 - **`src/`** — reusable pipeline, split into logical units and stitched together by
   `ReducedPrecision.jl` (usings/exports/`include`s only):
-  - `methods.jl` — `PRECISIONS`, `MethodSpec`, the method registries, and the plotting groups.
-    `ALL_METHODS` (12) = `GEOMETRIC_METHODS` (3) + `NONGEOMETRIC_METHODS` (5) + `GAUSS2_METHODS`
-    (4 partitioned Gauss(2) variants), grouped for plotting by `METHOD_GROUPS`
+  - `bfloat16_compat.jl` — `Base`/`NaNMath` methods BFloat16s.jl v0.6.1 lacks but the stack needs
+    (`rem` — hence `fld`/`div`/`mod`, on which float-range and therefore `Solution` construction
+    depend — plus `Integer(::BFloat16)`, `BFloat16(::BigInt)`, `sincos`, `NaNMath.log`).
+  - `initial_guess.jl` — the tableau-driven, clock-free `initial_guess!` for `IPRK` on PODE/HODE.
+  - `methods.jl` — `PRECISIONS` (4, BFloat16 first), `MethodSpec`, the method registries, and the
+    plotting groups. `ALL_METHODS` (12) = `GEOMETRIC_METHODS` (4) + `NONGEOMETRIC_METHODS` (4) +
+    `GAUSS2_METHODS` (4 partitioned Gauss(2) variants), grouped for plotting by `METHOD_GROUPS`
     (`euler` / `other` / `gauss2`). The degenerate-Lagrangian Lotka–Volterra comparison uses
     separate sets `LV2D_METHODS` (4, incl. `CMDVI`) / `LV4D_METHODS` (3, no `CMDVI`) and
     `LV2D_GROUPS` / `LV4D_GROUPS` (a single `variational` group each). The `GaussVPRK` wrapper
@@ -36,7 +42,7 @@ precision (Float16, Float32, Float64) on example problems from GeometricProblems
   across all precisions, diagnostics, per-run failure capture, and that the plotting routines write
   per-group figures incl. a custom group set). Run with `julia --project=. -e 'using Pkg; Pkg.test()'`.
 - **`scripts/{harmonic_oscillator,pendulum,double_pendulum,toda_lattice,lotka_volterra_2d,
-  lotka_volterra_4d}.jl`** — short-step drivers (HO & pendulum & Toda: Δt = 0.1, t ≤ 100; double
+  lotka_volterra_4d}.jl`** — short-step drivers (HO & pendulum: Δt = 0.1, t ≤ 1000; Toda: Δt = 0.1, t ≤ 100; double
   pendulum & both Lotka–Volterra: Δt = 0.01, t ≤ 10).
 - **`scripts/{…}_longtime.jl`** — coarse-step drivers: HO/pendulum Δt = 1, t ≤ 10 000; Toda Δt = 1,
   t ≤ 100 (same horizon as its short run); double pendulum Δt = 0.1, t ≤ 10 (same horizon as its
@@ -110,8 +116,16 @@ RK Euler twins `ExplicitEulerRK` / `ImplicitEulerRK`, which auto-promote to part
 single problem form runs the full geometric-vs-non-geometric comparison.
 
 Methods compared (Hamiltonian problems):
-- Geometric: Symplectic Euler A, Symplectic Euler B, Implicit Midpoint.
-- Non-geometric: Explicit Euler, Implicit Euler, Explicit Midpoint, Crank-Nicolson, RK4.
+- Geometric: Symplectic Euler A, Symplectic Euler B, Implicit Midpoint (`Gauss(1)`),
+  Implicit Runge-Kutta 4 (`Gauss(2)`).
+- Non-geometric: Explicit Euler, Implicit Euler, Explicit Midpoint, Explicit Runge-Kutta 4 (`RK4`).
+- The `other` plotting group is these last four as a **2 × 2**: explicit vs implicit at order 2, then
+  at order 4 (`Explicit Midpoint`, `Explicit Runge-Kutta 4`, `Implicit Midpoint`,
+  `Implicit Runge-Kutta 4`). Crank-Nicolson was dropped when this group was reorganised — it does not
+  fit the 2 × 2 — and `ImplicitMidpoint()` was replaced by `Gauss(1)` so both implicit rules sit on
+  the Runge-Kutta code path and share the tableau-driven initial guess in `src/initial_guess.jl`.
+  Note `Gauss(2)` reduces to `PRK Gauss(2)` on a partitioned problem: `Implicit Runge-Kutta 4` and
+  `PRK Gauss(2)` are the **same integrator**, verified bit-identical at every precision.
 - Partitioned Gauss(2) variants (`GAUSS2_METHODS`): `PartitionedTableau(Gauss(2))`,
   `SymplecticPartitionedTableau(Gauss(2))`, and both with the compensation coefficients `â,b̂,ĉ`
   zeroed — all IPRK, built at the run precision via a `tableau(method, T)` accessor.
@@ -152,7 +166,7 @@ Heuristic: if a script errors only on CI but not locally, suspect this kind of s
 2. `default_parameters` changed from a `const` NamedTuple to a type-parameterized function
    `default_parameters(::Type{T}=Float64)`. Every `map(T, MOD.default_parameters)` became
    `MOD.default_parameters(T)` (double pendulum, Toda, both Lotka–Volterra, and their longtime
-   variants). All 167 tests pass and all 12 scripts regenerate their figures cleanly under 0.7.0.
+   variants). All 261 tests pass and all 12 scripts regenerate their figures cleanly under 0.7.0.
 
 ## Verification results
 
@@ -168,74 +182,68 @@ drops cleanly per precision (e.g. oscillator: Float16 ~1e-2 → Float32 ~1e-6 �
 
 ## Genuine reduced-precision findings (not bugs)
 
-- **Float16 + long horizon (time-grid saturation).** Float16 cannot resolve successive time stamps
-  once `ulp(t) ≥ Δt` (`t + Δt == t`), which makes the implicit methods' Hermite initial guess throw
-  `ArgumentError: t₀ and t₁ … identical`. The onset depends on Δt: for Δt = 1 it is `t ≈ 2048` (integers
-  stop being exactly representable); for Δt = 0.1 it is already `t ≈ 100`.
-  - **`capped_final_time(T, t₁, Δt)`** (in `study.jl`, exported) is **Δt-aware**: it walks the exact
-    grid the solution stores (`GeometricSolutions.TimeSeries` backs it with `tbegin:Δt:tend`) and returns
-    the largest final time whose grid is strictly increasing in `T` — i.e. the last point before the
-    first saturation collision (or `t₁` if the grid stays resolvable, always so for Float32/Float64 at
-    these horizons). It also backs off the endpoint when the rebuilt `StepRangeLen` would pin a colliding
-    last point. Resulting Float16 caps: **128.0** for the short scripts (Δt = 0.1) and **2048.0** for the
-    longtime scripts (Δt = 1); both grids are verified collision-free.
-  - Applied in **all four** HO/pendulum scripts (`harmonic_oscillator.jl`, `pendulum.jl`, and their
-    `*_longtime.jl`): **every implicit method now runs at Float16** (Implicit Midpoint / Euler /
-    Crank-Nicolson / all four Gauss(2) variants — previously all `[skip]` with the `t₀ == t₁` error),
-    while Float32/Float64 keep their full horizon (t ≤ 1000 short, t ≤ 10_000 longtime). Explicit
-    Euler/midpoint still diverge — genuine instability, not saturation (guard-truncated).
-  - Support machinery: `solution_error` derives the reference-refinement factor from the two **timesteps**
-    (not the length ratio), so a capped Float16 run (shorter horizon) is compared against the matching
-    leading portion of the full-horizon reference; `_plot_grid` uses **per-panel** x-limits so the shorter
-    Float16 panel is not stretched to the longer precisions' horizon.
-  - **Upstream `reset!` fix (GeometricIntegratorsBase 0.4.0, commit `b60654d`) — verified.** The step
-    reset changed from *accumulating* (`solstep.t += Δt`, done inside `integrate!(solstep,int)`) to
-    *setting* the canonical grid time (`reset!(solstep, timesteps(sol)[n])`, done in the outer loop).
-    `study.jl`'s `integrate_bounded` loop mirrors this (`reset!(solstep, timesteps(sol)[n])` before
-    `integrate!`) — it REQUIRES 0.4.0 (on 0.3.x `reset!` took a Δt and would mis-advance). Verified via
-    `scripts/experiments/verify_reset_fix.jl`: the fix is correct and all 167 tests + scripts pass under
-    0.4.0, **but it does NOT remove the need for the Float16 cap**. The long-horizon failure is a Float16
-    *representability* limit, not an accumulation artifact: the canonical grid `0:1:10000` collected in
-    Float16 itself has 5678 collisions (first at t = 2048, where consecutive integers stop being
-    representable), so at the full t ≤ 10000 horizon Implicit Midpoint / Crank-Nicolson still throw
-    `t₀ and t₁ … identical`. Capped at t ≤ 2000 the grid has 0 collisions and everything runs. So the
-    fix (correct clock tracking) and `capped_final_time` (Float16 ≤ 2000) are complementary; both kept.
-  - **Upstream deps released; committed against the registry.** GeometricIntegratorsBase 0.4.0 and
-    GeometricIntegrators 0.16.5+ (registry resolves 0.16.6) are released; `[compat]` is `GIB = "0.4"`,
-    `GI = "0.16.5"`. All `[sources]` dev-links removed and the transient `NonlinearIntegrators` dep (added
-    by `Pkg.develop`, never actually used) dropped. `study.jl`'s `integrate_bounded` loop uses the 0.4.0
-    API `reset!(solstep, timesteps(sol)[n])` (set canonical grid time; the old `integrate!(solstep,int)`
-    internal `t += Δt` reset is gone in 0.4.0). Bump GIB compat past 0.4 only after re-checking that loop.
-- **Float16 double pendulum:** the implicit methods fail with "NaN in direction vector" — a real
-  Float16 instability for this stiff, dimensional (g = 9.8), chaotic system. Using the trust-region
-  `DogLeg` solver (the default) instead of `Newton` improves robustness generally but does **not**
-  rescue these Float16 solves. `run_study` catches the failures per-run so the sweep completes.
-- **Initial guess: MidpointExtrapolation vs the default HermiteExtrapolation.** `integrate_bounded` /
-  `run_study` now take an `initialguess` kwarg (default `nothing` → the method default, which is
-  `HermiteExtrapolation()` for every implicit RK/variational method). Investigated whether
-  `MidpointExtrapolation()` improves convergence, esp. in Float16 (see
-  `scripts/experiments/iguess_extrapolation.jl`, which instruments per-step nonlinear-iteration
-  counts via `SimpleSolvers.iteration_number(solverstate(int))`). Findings:
-  - **Float16 double pendulum (t ≤ 10, no time-grid saturation): genuine win.** Midpoint *rescues*
-    `Implicit Midpoint` and `Implicit Euler`, which complete all 1000 steps where Hermite throws the
-    "NaN detected" solver exception. (`Crank-Nicolson` and `PRK Gauss(2)` still fail under both.) So
-    switching the **initial guess** does what switching the **solver** (DogLeg) could not.
-  - **Float16 long-horizon HO/pendulum (t ≤ 1000): no help.** There the failure is the *saturated
-    Float16 clock* (`t₀ == t₁`), not the guess: Hermite errors with "t₀ and t₁ … identical", Midpoint
-    just swaps that for a NaN in the solve. Neither completes — the horizon still has to be capped.
-  - **Float32/Float64: neutral-to-worse; do NOT adopt globally.** For single-stage methods it is
-    comparable; for the multi-stage `PRK Gauss(2)` it is a much worse guess (iteration count explodes,
-    nearly every step hits the cap), and it can break `Crank-Nicolson` outright (NaN even at Float64).
-  - **Conclusion:** keep `HermiteExtrapolation` as the default; reach for `MidpointExtrapolation` as a
-    targeted, per-precision option for stiff Float16 solves (double pendulum `Implicit Midpoint`/`Euler`)
-    where it converts a hard failure into a usable run.
-  - **Applied:** `run_study`'s `initialguess` kwarg now also accepts a callable `T -> iguess|nothing`
-    resolved per precision. Both double-pendulum scripts pass
-    `initialguess = T -> T === Float16 ? MidpointExtrapolation() : nothing`, so `Implicit Midpoint`
-    and `Implicit Euler` now complete at Float16 (were `[skip] … NaN detected`) while Float32/Float64
-    keep the Hermite default (no regression to the multi-stage methods). `Crank-Nicolson` and the four
-    Gauss(2) variants still fail at Float16 under both guesses (genuine half-precision breakdown).
-    `MidpointExtrapolation`/`HermiteExtrapolation` are re-exported from `ReducedPrecision`.
+**The headline result of the BFloat16 work (2026-07-29): most of what this section used to call a
+"genuine Float16 limit" was not one.** Three separate quantities were being carried or compared at the
+working precision when they did not need to be, and each failure they caused looked like a hardware
+limit until the quantity was fixed:
+
+1. **The clock.** A `T`-typed time variable stops advancing once `ulp(t) ≥ Δt`, after which the Hermite
+   initial guess throws `t₀ == t₁`. Onsets measured by `capped_final_time`: BFloat16 t ≈ 2 / 16 / 256 at
+   Δt = 0.01 / 0.1 / 1.0; Float16 t ≈ 16 / 128 / 2048. `integrate_bounded` now advances the solution
+   step in a **fixed local time frame** (`reset_local!`): after each history shift the times are
+   relabelled so every step looks like the second one (history at `0, Δt`, target at `2Δt`). Legitimate
+   because the integrators take Δt from the problem, never from a clock difference, and all six problems
+   are autonomous. Verified: explicit methods bit-identical to the old global-clock runs, implicit ones
+   differ only at solver tolerance. This retired the `capped_final_time` horizon caps in all four
+   HO/pendulum scripts (the function stays as the diagnostic that measures the onset).
+2. **The initial guess.** Sharper still: the stage node the Hermite guess extrapolates to is a *tableau
+   constant* `c[i]`, but upstream reconstructed it as `history[1].t + Δt·c[i]` and then differenced it
+   back down. `src/initial_guess.jl` overrides `initial_guess!` for `IPRK` on PODE/HODE to pass `c[i]`
+   straight to `extrapolate!` with `NormalizedHermiteExtrapolation`, so no clock value enters the guess
+   at all. Result: the partitioned RK methods are now **completely clock-independent** — at BFloat16
+   past the saturation point, `localclock = true` and `false` give bit-identical results. Needs
+   GeometricIntegratorsBase ≥ 0.4.2, the release that added `NormalizedHermiteExtrapolation`.
+3. **The solver tolerance.** `GeometricIntegratorsBase.default_options` pins `f_abstol = 8eps()` —
+   `8eps(Float64)` — at every precision. Since convergence is `rfₐ ≤ f_abstol + f_reltol·‖F(x₀)‖`, and a
+   good guess makes `‖F(x₀)‖` small, a half-precision residual could never satisfy it: every implicit
+   solve burnt all 1000 iterations *per step*, silently. `run_study` now defaults to
+   `solver_tolerances(T) = (f_abstol = 8eps(T),)`. Float64 bit-identical, others unchanged to round-off,
+   2.6–40× faster, and `run_all.jl`'s log dropped from **900 MB** to a few MB.
+4. **The same tolerance in the Float64 references.** The `Gauss(8)` reference for the 4D Lotka–Volterra
+   system could not reach `8eps(Float64)` either — not from precision but from *conditioning* (it is the
+   degenerate one, with `A_quasicanonical_reduced`) — and so capped out on every step for a solution the
+   study treats as ground truth. `reference_solution(problem, method)` scales the floor by `√n` for `n`
+   stage unknowns (dimensionally right: the residual is an `l2` norm over `n` components). **563×
+   faster** on LV4D (36.9 s → 0.066 s for 500 steps, 270 capped → 0), references agree to 1.4e-12. All
+   ten `Gauss(8)` call sites in `scripts/` now use it. Probed the rest: pendulum (n=16), double pendulum
+   (n=32), Toda (n=**256**) and LV2D (n=16) all reached `8eps` already, so this is not a size effect —
+   `√n` is simply a principled floor that happens to supply the 5.7× LV4D needs.
+   Upstream gap worth reporting: `assess_convergence` has **no stagnation exit** — every path requires
+   the residual test, and `f_settled = rfₛ ≤ ‖F‖·f_suctol` cannot fire once `F` jitters at its own floor.
+
+**Consequence for the method matrix:** with (1)–(3) in place, `HermiteExtrapolation` converges for every
+Gauss-family method at every precision on every Hamiltonian problem/scenario — so the old
+`MidpointExtrapolation` workaround in the double-pendulum scripts is **removed** (Midpoint is now
+*worse*: it causes 5 failures at Float16 and 1 at BFloat16 where Hermite has none). The old "Float16
+double pendulum implicit methods fail with NaN in direction" finding is superseded: its real cause was
+the differenced Hermite interval, since Float16 resolves only ~0.004 near t = 5, comparable to Δt = 0.01.
+
+**What remains genuinely precision-limited:**
+
+- **The round-off floor on the achievable energy error** — the honest, unavoidable cost, and the thing
+  the study is actually about. Measured for implicit midpoint at Δt = 0.1: HO `1.1e-2` / `8.9e-3` /
+  `2.1e-6` / `5.4e-15` and pendulum `2.5e-1` / `3.7e-2` / `6.2e-4` / `6.2e-4` across
+  BFloat16 / Float16 / Float32 / Float64. Note the pendulum's Float32 = Float64: that rule is
+  truncation-limited there, so which floor a curve sits on is method-dependent.
+- **BFloat16 is a factor ≈ 8 worse than Float16** — exactly the ratio of their `eps`. Its wider exponent
+  range is useless for these bounded Hamiltonian systems, so it is simply the coarsest of the four.
+- **The degenerate-Lagrangian (Lotka–Volterra) variational integrators break down at BFloat16.**
+  `VPRK Gauss(1)`, `PMVI Midpoint` and `CMDVI` all throw "NaN detected in direction₁ vector"; the local
+  frame lets `Implicit Midpoint` get further (diverging around step 624 at Δt = 0.1) but does not rescue
+  them. These are singular systems with a `log(q)` one-form, so 8 significand bits is genuinely too
+  coarse. This path is not covered by the tableau-driven guess, which targets PODE/HODE only.
+- **Problem-dependent robustness.** The Toda lattice, whose bump initial data keeps the state bounded,
+  runs every method at every precision.
 
 All runs are wrapped so a single failure never aborts the study.
 

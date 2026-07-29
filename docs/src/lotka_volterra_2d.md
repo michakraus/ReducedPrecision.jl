@@ -26,16 +26,26 @@ four methods are type-pure at every precision.
 ![Energy error, variational integrators](figures/lotka_volterra_2d_energy_error_dt_0.01_variational.png)
 
 At Float32 and Float64 all four midpoint variants conserve energy well and trace visibly different
-fine structure — CMDVI in particular follows a distinct curve. At **Float16** the `VPRK` and `PMVI`
-solves hit the same half-precision `NaN`-direction breakdown seen on the other stiff problems, while
-implicit midpoint and CMDVI still run.
+fine structure — CMDVI in particular follows a distinct curve. The half precisions are where this
+problem class parts company with the Hamiltonian ones: the variational solves hit a `NaN`-direction
+breakdown in the nonlinear solver, `VPRK` and `PMVI` at **both** 16-bit formats and `CMDVI`
+additionally at `BFloat16`.
+
+This is the one family in the study where — unlike the failures on the Hamiltonian problems — the
+breakdown is *not* a bookkeeping artefact. These are
+**singular** (degenerate-Lagrangian) systems whose one-form involves ``\log q``, so the nonlinear
+iterate has to stay in the positive orthant; at 8 significand bits it does not. Neither the
+[local time frame](@ref "Time stepping in a local frame") nor the tableau-driven
+[initial guess](@ref "Initial guess") helps here — the latter targets the PODE/HODE code path, and
+these problems are LODEs.
 
 ### Solution error
 
 ![Solution error, variational integrators](figures/lotka_volterra_2d_solution_error_dt_0.01_variational.png)
 
 Against the `Gauss(8)` reference the four variants keep a small trajectory error at Float32/Float64,
-with CMDVI again separating from the others; at Float16 only the surviving methods contribute.
+with CMDVI again separating from the others; in the half precisions only the surviving methods
+contribute.
 
 ### Configuration-space trajectory
 

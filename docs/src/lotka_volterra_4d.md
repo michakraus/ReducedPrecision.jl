@@ -29,7 +29,9 @@ reference. All three methods are type-pure at every precision.
 
 At Float32 and Float64 the three variational integrators conserve energy well; at Float16 the `VPRK`
 and `PMVI` solves fail (NaN directions or log-domain errors from the degenerate Lagrangian), while
-implicit midpoint still runs at the short step.
+implicit midpoint still runs at the short step. `BFloat16` behaves much the same — see the
+[2D discussion](@ref "Lotka–Volterra 2D") for why the degenerate-Lagrangian systems are the one family
+whose half-precision failures are genuine rather than bookkeeping artefacts.
 
 ### Solution error
 

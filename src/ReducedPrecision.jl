@@ -2,7 +2,7 @@
     ReducedPrecision
 
 Reusable pipeline for studying geometric (symplectic) vs non-geometric integrators
-run in varying floating-point precision (Float16, Float32, Float64).
+run in varying floating-point precision (BFloat16, Float16, Float32, Float64).
 
 The study is driven by a per-problem `make_problem(T)` closure that must return a
 partitioned problem (PODE/HODE) at precision `T` with **both** initial conditions and
@@ -17,34 +17,45 @@ problem form runs the whole method set for a fair comparison.
 
 The implementation is split into logical units:
 
-- `methods.jl`     — precisions, the `MethodSpec` registry and the plotting method groups;
-- `study.jl`       — the `Run` type and `run_study` sweep;
-- `diagnostics.jl` — precision-purity checks and the error metrics;
-- `plotting.jl`    — the CairoMakie plotting routines.
+- `bfloat16_compat.jl` — `Base`/`NaNMath` methods BFloat16s.jl lacks but the stack needs;
+- `methods.jl`         — precisions, the `MethodSpec` registry and the plotting method groups;
+- `initial_guess.jl`   — a tableau-driven (clock-free) initial guess for the partitioned RK methods;
+- `study.jl`           — the `Run` type, the `run_study` sweep and the solver tolerances;
+- `diagnostics.jl`     — precision-purity checks and the error metrics;
+- `plotting.jl`        — the CairoMakie plotting routines.
 """
 module ReducedPrecision
 
+import BFloat16s: BFloat16          # `import`, since `bfloat16_compat.jl` extends its constructor
+import NaNMath                      # ditto, for its BFloat16 `log`
 using GeometricIntegrators
-using GeometricIntegratorsBase: Solution, solutionstep, current,
-    HermiteExtrapolation, MidpointExtrapolation
+using GeometricIntegratorsBase: GeometricIntegratorsBase, GeometricIntegrator, Solution,
+    solutionstep, current, state, nhistory, cache, nlsolution, extrapolate!,
+    HermiteExtrapolation, MidpointExtrapolation, NormalizedHermiteExtrapolation
 import GeometricIntegratorsBase: initmethod, isimplicit, default_options
 using GeometricSolutions
 using GeometricBase
-using GeometricEquations: parameters, GeometricProblem
+using GeometricEquations: parameters, GeometricProblem, PODEProblem, HODEProblem
+using GeometricIntegrators.Integrators: IPRK, eachstage
 using SimpleSolvers: DogLeg, Newton, StrongWolfe, Backtracking
 using RungeKutta: Tableau, PartitionedTableau, SymplecticPartitionedTableau, TableauGauss
 using CairoMakie
 
+export BFloat16
 export PRECISIONS, MethodSpec, GEOMETRIC_METHODS, NONGEOMETRIC_METHODS, ALL_METHODS
 export EULER_METHODS, OTHER_METHODS, GAUSS2_METHODS, METHOD_GROUPS
 export LV2D_METHODS, LV4D_METHODS, LV2D_GROUPS, LV4D_GROUPS
-export Run, run_study, integrate_bounded, assert_precision, verify_precision, capped_final_time
+export Run, run_study, integrate_bounded, reset_local!, solver_tolerances, reference_solution
+export assert_precision, verify_precision
+export capped_final_time
 export DogLeg, Newton, StrongWolfe, Backtracking
-export HermiteExtrapolation, MidpointExtrapolation
+export HermiteExtrapolation, MidpointExtrapolation, NormalizedHermiteExtrapolation
 export energy_error, solution_error, timevalues
 export plot_energy_error, plot_solution_error, plot_solution
 
+include("bfloat16_compat.jl")
 include("methods.jl")
+include("initial_guess.jl")
 include("study.jl")
 include("diagnostics.jl")
 include("plotting.jl")

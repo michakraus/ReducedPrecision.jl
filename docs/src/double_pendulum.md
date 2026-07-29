@@ -16,16 +16,27 @@ plots use the **configuration space** ``(\theta_1, \theta_2)``.
 
 ![Energy error, Gauss(2) variants](figures/double_pendulum_energy_error_dt_0.01_gauss2.png)
 
-At Float32 and Float64 all methods run and the usual ordering holds — implicit midpoint and
-Crank–Nicolson keep the energy error far below the Euler methods. At **Float16 the three implicit
-methods fail** with a `NaN` in the nonlinear-solver direction: half precision is simply inadequate
-for the implicit solves on this stiff system (the explicit and symplectic Euler methods still run).
-Switching the nonlinear solver from `Newton` to the trust-region `DogLeg` (the default here) does
-not rescue these Float16 solves — the breakdown is a genuine property of half precision, not of the
-solver. The four partitioned-Gauss(2) variants share the fate of the other implicit methods at
-Float16 but are informative at Float32/Float64, where the symplectic-vs-duplicated tableau choice
-and the rounding-compensation coefficients ``â, b̂, ĉ`` produce visibly different energy-error fine
-structure.
+All twelve methods run at all four precisions, and the usual ordering holds — the implicit (Gauss)
+rules keep the energy error far below the Euler methods. The 2 × 2 group is particularly clean here at
+Float64: the two explicit rules both drift to order `1e-1`, implicit midpoint stays around `1e-4`, and
+implicit RK4 around `1e-10` — symplecticity setting the qualitative behaviour, the order setting the
+level. In the two half precisions all four collapse onto a common round-off floor (≈ `1e-1` at
+BFloat16, ≈ `1e-2` at Float16), so neither the order nor the symplecticity is visible: at 8–11
+significand bits, arithmetic dominates the method entirely.
+
+This scenario used to be the study's headline half-precision failure: the three implicit methods
+threw a `NaN` in the nonlinear-solver direction at Float16, and neither the trust-region `DogLeg`
+solver nor a `MidpointExtrapolation` initial guess reliably fixed it. The cause was not the solver
+but the *clock*. Hermite extrapolation reads its interval off the stored history times, and Float16
+resolves only about `0.004` near ``t = 5`` — comparable to ``\Delta t = 0.01`` — so the interval it
+differenced, and hence the initial guess, was materially wrong. Since the solution step is advanced
+in a [local time frame](@ref "Time stepping in a local frame"), the interval is exact and the
+breakdown is gone at every precision.
+
+The four partitioned-Gauss(2) variants are now informative at every precision. The
+symplectic-vs-duplicated tableau choice and the rounding-compensation coefficients ``â, b̂, ĉ``
+produce visibly different energy-error fine structure at Float32/Float64; in half precision the
+round-off floor swamps those differences.
 
 ### Solution error
 
@@ -36,8 +47,10 @@ structure.
 ![Solution error, Gauss(2) variants](figures/double_pendulum_solution_error_dt_0.01_gauss2.png)
 
 Against the `Gauss(8)` reference every method tracks closely until the chaotic divergence sets in,
-after which all trajectory errors saturate at order one; at Float16 the surviving methods diverge
-noticeably earlier than at Float32/Float64.
+after which all trajectory errors saturate at order one. The lower the precision the earlier that
+happens — earliest at BFloat16, then Float16 — since a chaotic system amplifies the round-off floor
+exponentially. This is the mechanism by which reduced precision actually hurts here: not a failed
+solve, but a shorter predictability horizon.
 
 ### Configuration-space trajectory
 
@@ -47,8 +60,8 @@ noticeably earlier than at Float32/Float64.
 
 ![Configuration-space trajectory, Gauss(2) variants](figures/double_pendulum_solution_dt_0.01_gauss2.png)
 
-The methods track the reference until the chaotic divergence sets in; at Float16 the surviving
-methods depart from the reference noticeably earlier.
+The methods track the reference until the chaotic divergence sets in, departing from it progressively
+earlier as the precision drops.
 
 ## Coarse scenario (Δt = 0.1, t ≤ 10)
 
@@ -63,13 +76,14 @@ methods depart from the reference noticeably earlier.
 At the ten-times-coarser step `Δt = 0.1` (over the same `t ≤ 10` horizon as the fine run) every
 solve now stays stable — with the line-search `Newton`/`Backtracking` solver capped at 100
 iterations, nothing trips the divergence guard. The geometric methods keep the smallest energy
-error: symplectic Euler A/B, implicit midpoint and the partitioned Gauss(2) variants stay bounded
+error: symplectic Euler A/B, the two Gauss rules and the partitioned Gauss(2) variants stay bounded
 around `1e-2`–`1e-1`, while the non-geometric methods drift up toward order one (explicit Euler
-worst, then explicit midpoint, RK4 and implicit Euler). The only outright failure is Crank–Nicolson
-in `Float16` (a NaN in the Newton direction, guarded and skipped — hence its absence from the
-`Float16` panel). Reduced precision mainly raises the error floor; the qualitative ranking is the
-same across `Float16`/`Float32`/`Float64`. As always for this chaotic system the fine `Δt = 0.01`
-run is the more informative one.
+worst, then explicit midpoint and implicit Euler). Every method now completes at every precision —
+this scenario used to lose the `Float16` Crank–Nicolson solve to a `NaN` in the Newton direction, and
+the `Float16` implicit solves generally to a breakdown that was mistaken for a half-precision limit
+until the [initial guess](@ref "Initial guess") was made independent of the clock. Reduced precision
+merely raises the error floor; the qualitative ranking is the same at all four precisions. As always
+for this chaotic system the fine `Δt = 0.01` run is the more informative one.
 
 ### Solution error
 

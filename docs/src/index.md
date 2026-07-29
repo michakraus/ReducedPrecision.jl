@@ -5,8 +5,8 @@ floating-point precision.*
 
 ## Overview
 
-`ReducedPrecision` studies how numerical integrators behave when run in **Float16**, **Float32**,
-and **Float64**, and in particular how *geometric* (symplectic) integrators compare to
+`ReducedPrecision` studies how numerical integrators behave when run in **BFloat16**, **Float16**,
+**Float32** and **Float64**, and in particular how *geometric* (symplectic) integrators compare to
 *non-geometric* ones with respect to
 
 * **accuracy** — the error of the computed solution relative to a reference, and
@@ -39,15 +39,29 @@ A central goal of the implementation is **type purity**: every library in the st
   qualitative difference between geometric and non-geometric integrators, and it holds at every
   precision.
 * **Precision sets the error floor.** For the energy-conserving methods the size of the (bounded)
-  energy error is set by the working precision — e.g. for the harmonic oscillator roughly
-  `1e-2` (Float16), `1e-6` (Float32), `1e-15` (Float64).
+  energy error is set by the working precision — for the harmonic oscillator at `Δt = 0.1`, the
+  implicit midpoint rule settles at roughly `1e-2` (BFloat16), `9e-3` (Float16), `2e-6` (Float32) and
+  `5e-15` (Float64).
+* **Exponent range buys nothing; significand bits do.** `BFloat16` and `Float16` are both 16-bit, but
+  `BFloat16` spends three of its significand bits on `Float32`'s exponent range. On these bounded
+  Hamiltonian problems that range is never needed, so `BFloat16` is simply the coarser of the two —
+  its error floor sits a factor of ≈ 8 above `Float16`'s, exactly the ratio of their `eps`.
 * **Reduced precision is type-pure.** No implicit promotion to `Float64` occurs in any library, for
-  any method or problem, including the hand-built `Float16`/`Float32` constructions of the double
+  any method or problem, including the hand-built half-precision constructions of the double
   pendulum and Toda lattice.
-* **Float16 has hard limits at long horizons.** Once time exceeds the range where `t + Δt` is
-  distinguishable in `Float16`, the implicit methods' initial guess breaks down; and on stiff
-  systems the `Float16` implicit solves can produce `NaN` directions even with the robust `DogLeg`
-  solver. These are genuine properties of half precision, surfaced (not hidden) by the study.
+* **Most of what looked like a half-precision limit was a bookkeeping limit.** Three quantities were
+  being carried or compared at the working precision without needing to be — the *clock*, the initial
+  guess's *interpolation node*, and the solver's *residual tolerance* — and each produced failures
+  that read as hardware limits. A `T`-typed clock stops advancing once `ulp(t) ≥ Δt` (from `t ≈ 128`
+  in `Float16`, `t ≈ 16` in `BFloat16` at `Δt = 0.1`), which used to cap the horizons studied and
+  break the implicit solves. Stepping in a [local time frame](@ref "Time stepping in a local frame")
+  and taking the [initial guess](@ref "Initial guess") from the tableau's normalised nodes remove that
+  dependence exactly for these autonomous problems. Across all eight Hamiltonian runs — every method at
+  every precision — exactly one integration now fails, against a whole column of them before.
+* **What remains is genuinely precision-limited:** the round-off floor on the achievable energy error,
+  and the degenerate-Lagrangian Lotka–Volterra variational integrators, which break down in half
+  precision — those are singular systems with a `log(q)` one-form, so the nonlinear iterate must stay
+  in the positive orthant, and 8–11 significand bits are not enough to keep it there.
 
 See [Findings](@ref) for the full discussion.
 

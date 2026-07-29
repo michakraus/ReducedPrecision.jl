@@ -31,7 +31,7 @@ verify_precision(runs)
 
 # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
 reference = try
-    integrate(make_reference(Float64), Gauss(8))
+    reference_solution(make_reference(Float64), Gauss(8))
 catch e
     @warn "reference integration failed; skipping solution-error and trajectory plots" error = sprint(showerror, e)
     nothing

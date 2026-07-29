@@ -1,6 +1,15 @@
-# Verification: does the upstream GeometricIntegratorsBase 0.4.0 `reset!` fix (set the step time
-# from timesteps(sol)[n] instead of accumulating `t += Δt`) resolve the Float16 time-accumulation
-# issue that made the long-time HO/pendulum implicit runs throw "t₀ and t₁ … identical"?
+# HISTORICAL. Asked whether the upstream GeometricIntegratorsBase 0.4.0 `reset!` fix (set the step
+# time from timesteps(sol)[n] instead of accumulating `t += Δt`) resolved the Float16
+# time-accumulation issue that made the long-time HO/pendulum implicit runs throw
+# "t₀ and t₁ … identical". It did not — the answer was a *representability* limit of the T-typed
+# clock, which is why `capped_final_time` existed.
+#
+# Both the fix and the cap have since been superseded: `integrate_bounded` advances the step in a
+# local time frame (`reset_local!`) and the partitioned RK initial guess is taken from the tableau's
+# normalised nodes (`src/initial_guess.jl`), so the clock no longer constrains the horizon at all and
+# no script caps its final time. Kept because the Float16 grid-collision census below still documents
+# the underlying limit; the "uncapped vs capped" comparison it runs is now expected to succeed in
+# both columns.
 #
 #     julia --project=. scripts/experiments/verify_reset_fix.jl
 
@@ -34,9 +43,9 @@ end
 
 # --- 2. actual integrations: full (uncapped) vs capped Float16 horizon -------------------------
 # Default Hermite initial guess (the one that previously threw t₀==t₁). Implicit methods only.
-methods = [("Implicit Midpoint", ImplicitMidpoint()),
-           ("Implicit Euler",    ImplicitEulerRK()),
-           ("Crank-Nicolson",    CrankNicolson())]
+methods = [("Implicit Midpoint",      Gauss(1)),
+           ("Implicit Euler",         ImplicitEulerRK()),
+           ("Implicit Runge-Kutta 4", Gauss(2))]
 
 function try_run(t₁, mname, method)
     prob = ho_pode(Float16.(HO.q₀), Float16.(HO.p₀);

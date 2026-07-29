@@ -1,9 +1,14 @@
 # Precisions and the integration-method registry.
 
 """
-The floating-point precisions swept over in every study.
+The floating-point precisions swept over in every study, ordered by ascending significand precision
+(8 / 11 / 24 / 53 bits). This order is also the left-to-right panel order in every figure.
+
+`BFloat16` comes first because it is the coarsest: it spends its 16 bits on `Float32`'s exponent
+range rather than on the significand, so it has 3 fewer significand bits than `Float16`
+(`eps` 2⁻⁷ vs 2⁻¹⁰) while reaching far larger magnitudes.
 """
-const PRECISIONS = (Float16, Float32, Float64)
+const PRECISIONS = (BFloat16, Float16, Float32, Float64)
 
 """
     MethodSpec(name, method, geometric)
@@ -19,11 +24,18 @@ end
 
 """
 Geometric (symplectic) methods.
+
+The two implicit ones are the 1- and 2-stage **Gauss** collocation rules, of order 2 and 4. `Gauss(1)`
+*is* the implicit midpoint rule, so it keeps that (more familiar) label; `Gauss(2)` is labelled
+`"Implicit Runge-Kutta 4"` to pair it with the explicit fourth-order rule. Using `Gauss(s)` rather
+than `ImplicitMidpoint()` puts both on the same Runge–Kutta code path, which is what lets them share
+the tableau-driven initial guess in [`initial_guess!`](@ref).
 """
 const GEOMETRIC_METHODS = MethodSpec[
-    MethodSpec("Symplectic Euler A", SymplecticEulerA(), true),
-    MethodSpec("Symplectic Euler B", SymplecticEulerB(), true),
-    MethodSpec("Implicit Midpoint",  ImplicitMidpoint(),  true),
+    MethodSpec("Symplectic Euler A",     SymplecticEulerA(), true),
+    MethodSpec("Symplectic Euler B",     SymplecticEulerB(), true),
+    MethodSpec("Implicit Midpoint",      Gauss(1),           true),
+    MethodSpec("Implicit Runge-Kutta 4", Gauss(2),           true),
 ]
 
 """
@@ -32,11 +44,10 @@ twins (`ExplicitEulerRK` / `ImplicitEulerRK`), which auto-promote to partitioned
 PODE/HODE, so the whole set runs on a single partitioned problem form.
 """
 const NONGEOMETRIC_METHODS = MethodSpec[
-    MethodSpec("Explicit Euler",    ExplicitEulerRK(),  false),
-    MethodSpec("Implicit Euler",    ImplicitEulerRK(),  false),
-    MethodSpec("Explicit Midpoint", ExplicitMidpoint(), false),
-    MethodSpec("Crank-Nicolson",    CrankNicolson(),    false),
-    MethodSpec("RK4",               RK4(),              false),
+    MethodSpec("Explicit Euler",         ExplicitEulerRK(),  false),
+    MethodSpec("Implicit Euler",         ImplicitEulerRK(),  false),
+    MethodSpec("Explicit Midpoint",      ExplicitMidpoint(), false),
+    MethodSpec("Explicit Runge-Kutta 4", RK4(),              false),
 ]
 
 # Partitioned Gauss(2) variants (the third comparison group). All four are implicit partitioned
@@ -71,6 +82,11 @@ GeometricBase.tableau(::GaussSPRK0, ::Type{T} = Float64) where {T} = _zero_hats(
 Partitioned Gauss(2) variants (all symplectic). They differ only in implementation details:
 symplectic-by-construction (`SPRK`) versus by-duplication (`PRK`), and whether the rounding-error
 compensation coefficients â/b̂/ĉ are retained or zeroed.
+
+Note `PRK Gauss(2)` is the same integrator as `"Implicit Runge-Kutta 4"` in
+[`GEOMETRIC_METHODS`](@ref) — `Gauss(2)` reduces to the duplicated partitioned tableau on a
+partitioned problem — so it doubles as this group's baseline and as the fourth-order implicit member of
+the [`OTHER_METHODS`](@ref) 2 × 2. Verified bit-identical at every precision.
 """
 const GAUSS2_METHODS = MethodSpec[
     MethodSpec("PRK Gauss(2)",            GaussPRK(),   true),
@@ -99,10 +115,14 @@ const EULER_METHODS = _methods_in_order(
     "Symplectic Euler A", "Symplectic Euler B", "Explicit Euler", "Implicit Euler")
 
 """
-The remaining (midpoint / trapezoidal / higher-order) methods.
+The midpoint / higher-order methods, as a 2 × 2 comparison: explicit versus implicit at order 2 and
+at order 4. The implicit pair are the Gauss collocation rules (`Gauss(1)` — the implicit midpoint
+rule — and `Gauss(2)`), so within each order the only difference is explicit versus implicit, and
+within each of those the only difference is the order.
 """
 const OTHER_METHODS = _methods_in_order(
-    "RK4", "Explicit Midpoint", "Implicit Midpoint", "Crank-Nicolson")
+    "Explicit Midpoint", "Explicit Runge-Kutta 4",
+    "Implicit Midpoint", "Implicit Runge-Kutta 4")
 
 """
 The default method groups, as `label => methods` pairs; each plotting routine produces one figure

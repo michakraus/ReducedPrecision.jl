@@ -9,11 +9,10 @@ using ReducedPrecision
 using GeometricProblems.HarmonicOscillator: podeproblem, hamiltonian, exact_solution
 import GeometricProblems.HarmonicOscillator as HO
 
-# Nominal horizon t = 1000 (nt = 10_000) at Δt = 0.1. In Float16 the time grid saturates far
-# earlier than that (successive stamps become indistinguishable once ulp(t) ≥ Δt, i.e. around
-# t ≈ 128 for Δt = 0.1), which breaks the implicit methods' Hermite initial guess (t₀ == t₁). The
-# Float16 final time is therefore capped to the last resolvable grid point via `capped_final_time`
-# (Δt-aware); Float32/Float64 keep the full t ≤ 1000 horizon.
+# Horizon t = 1000 (nt = 10_000) at Δt = 0.1, at every precision. A T-typed global clock would stop
+# advancing long before that in half precision (around t ≈ 128 in Float16 and t ≈ 16 in BFloat16;
+# see `capped_final_time`), but `integrate_bounded` steps in a local time frame, so the horizon is
+# not limited by the clock.
 const t₀ = 0.0
 const Δt = 0.1
 const nt = 10_000
@@ -23,8 +22,7 @@ const t₁ = nt * Δt
 # GeometricProblems v0.7.0 the `podeproblem(::Type{T})` precision constructor is gone, so the
 # T-typed initial conditions are built here from the module defaults.
 make_problem(::Type{T}) where {T} =
-    podeproblem(T.(HO.q₀), T.(HO.p₀);
-        timespan = (T(t₀), T(capped_final_time(T, t₁, Δt))), timestep = T(Δt))
+    podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
@@ -38,13 +36,13 @@ reference = exact_solution(make_problem(Float64))
 
 plot_energy_error(runs, hamiltonian;
     path  = joinpath(plotdir, "harmonic_oscillator_energy_error_dt_$(Δt).png"),
-    title = "Harmonic Oscillator — Relative Energy Error (Δt = 0.1, t ≤ 10^4)")
+    title = "Harmonic Oscillator — Relative Energy Error (Δt = 0.1, t ≤ 1000)")
 
 plot_solution_error(runs, reference;
     path  = joinpath(plotdir, "harmonic_oscillator_solution_error_dt_$(Δt).png"),
-    title = "Harmonic Oscillator — Solution Error (Δt = 0.1, t ≤ 10^4, vs. analytic)")
+    title = "Harmonic Oscillator — Solution Error (Δt = 0.1, t ≤ 1000, vs. analytic)")
 
 plot_solution(runs; reference = reference,
     path   = joinpath(plotdir, "harmonic_oscillator_solution_dt_$(Δt).png"),
-    title  = "Harmonic Oscillator — Phase-Space Trajectory (Δt = 0.1, t ≤ 10^4)",
+    title  = "Harmonic Oscillator — Phase-Space Trajectory (Δt = 0.1, t ≤ 1000)",
     xlabel = "q", ylabel = "p")

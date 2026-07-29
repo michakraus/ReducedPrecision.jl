@@ -32,20 +32,20 @@ end
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
-# In Float16 the default HermiteExtrapolation initial guess breaks down on this stiff, chaotic
-# system (the implicit solves throw "NaN detected"). Seeding each step with MidpointExtrapolation
-# instead — which advances one history point with the vector field rather than needing a two-point
-# Hermite polynomial — rescues the Implicit Midpoint and Implicit Euler solves so they run to
-# completion. The higher precisions keep the Hermite default, where Midpoint would regress the
-# multi-stage (Gauss(2)) methods.
+# The default HermiteExtrapolation initial guess works at every precision here. It used to throw
+# "NaN detected" in Float16 on this stiff, chaotic system, which was worked around by seeding those
+# solves with MidpointExtrapolation; the local-frame stepping of `integrate_bounded` removed the
+# cause. The Hermite guess reads its interval off the stored history times, and on the old global
+# clock those had accumulated enough rounding at low precision (Float16 resolves ~0.004 near t = 5,
+# comparable to Δt = 0.01) that the extrapolation parameter `s` was materially wrong. In the local
+# frame it is exactly 2, and Midpoint is now the worse choice at every precision.
 runs = run_study(make_problem;
-    solver = Newton(), linesearch = Backtracking(), max_iterations = 100,
-    initialguess = T -> T === Float16 ? MidpointExtrapolation() : nothing)
+    solver = Newton(), linesearch = Backtracking(), max_iterations = 100)
 
 verify_precision(runs)
 
 # high-precision reference (Float64, high-order symplectic, same time grid)
-reference = integrate(make_problem(Float64), Gauss(8))
+reference = reference_solution(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, hamiltonian;
     path  = joinpath(plotdir, "double_pendulum_energy_error_dt_$(Δt).png"),

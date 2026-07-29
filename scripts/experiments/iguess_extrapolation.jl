@@ -97,10 +97,10 @@ dp_make(::Type{T}) where {T} =
         parameters = DP.default_parameters(T))                                          # nt = 1000
 
 const IMPLICIT_METHODS = [
-    ("Implicit Midpoint", ImplicitMidpoint()),
-    ("Implicit Euler",    ImplicitEulerRK()),
-    ("Crank-Nicolson",    CrankNicolson()),
-    ("PRK Gauss(2)",      ReducedPrecision.GaussPRK()),
+    ("Implicit Midpoint",      Gauss(1)),
+    ("Implicit Euler",         ImplicitEulerRK()),
+    ("Implicit Runge-Kutta 4", Gauss(2)),
+    ("PRK Gauss(2)",           ReducedPrecision.GaussPRK()),
 ]
 
 const CAP = 100   # iteration cap; a step reaching it counts as a non-converged solve
@@ -126,7 +126,7 @@ for (plabel, make, ham, solver) in PROBLEMS
     println(plabel, "   [solver: ", nameof(typeof(solver)), ", iteration cap: ", CAP, "]")
     println("="^112)
     for (mname, method) in IMPLICIT_METHODS
-        for T in (Float16, Float32, Float64)
+        for T in PRECISIONS
             mh = measure(make, ham, method, T, fresh_iguess("Hermite");  solver, max_iterations = CAP, cap = CAP)
             mm = measure(make, ham, method, T, fresh_iguess("Midpoint"); solver, max_iterations = CAP, cap = CAP)
             @printf("%-17s %-8s  Hermite : %s\n", mname, string(T), fmt(mh))
