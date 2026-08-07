@@ -49,15 +49,16 @@ A central goal of the implementation is **type purity**: every library in the st
 * **Reduced precision is type-pure.** No implicit promotion to `Float64` occurs in any library, for
   any method or problem, including the hand-built half-precision constructions of the double
   pendulum and Toda lattice.
-* **Most of what looked like a half-precision limit was a bookkeeping limit.** Three quantities were
-  being carried or compared at the working precision without needing to be — the *clock*, the initial
-  guess's *interpolation node*, and the solver's *residual tolerance* — and each produced failures
+* **Most of what looks like a half-precision limit is a bookkeeping limit.** Three quantities are
+  easily carried or compared at the working precision without needing to be — the *clock*, the initial
+  guess's *interpolation node*, and the solver's *residual tolerance* — and each then produces failures
   that read as hardware limits. A `T`-typed clock stops advancing once `ulp(t) ≥ Δt` (from `t ≈ 128`
-  in `Float16`, `t ≈ 16` in `BFloat16` at `Δt = 0.1`), which used to cap the horizons studied and
+  in `Float16`, `t ≈ 16` in `BFloat16` at `Δt = 0.1`), which alone would cap the horizons studied and
   break the implicit solves. Stepping in a [local time frame](@ref "Time stepping in a local frame")
   and taking the [initial guess](@ref "Initial guess") from the tableau's normalised nodes remove that
-  dependence exactly for these autonomous problems. Across all eight Hamiltonian runs — every method at
-  every precision — exactly one integration now fails, against a whole column of them before.
+  dependence exactly for these autonomous problems, and the framework's
+  [residual tolerance](@ref "Solver tolerances") is scaled to the precision and stage size. Across all
+  eight Hamiltonian runs — every method at every precision — exactly one integration fails.
 * **What remains is genuinely precision-limited:** the round-off floor on the achievable energy error,
   and the degenerate-Lagrangian Lotka–Volterra variational integrators, which break down in half
   precision — those are singular systems with a `log(q)` one-form, so the nonlinear iterate must stay

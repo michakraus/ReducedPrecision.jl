@@ -84,8 +84,8 @@ implicit solvers need — `lu`, `\`, `norm`, `dot` — works on `BFloat16` uncha
 
 ## The reduced-precision clock, and why it is not a real limit
 
-The most conspicuous half-precision failure in this study turned out to be an artefact of
-bookkeeping rather than a property of the integrators.
+The most conspicuous half-precision failure mode in this study is an artefact of bookkeeping rather
+than a property of the integrators.
 
 A time variable stored in `T` stops advancing once `ulp(t) ≥ Δt`: successive stamps round to the same
 value, and the implicit methods' `HermiteExtrapolation` — which divides by `t₁ - t₀` — fails with
@@ -96,63 +96,68 @@ study.
 But no method here derives its step size from a difference of clock values — they all read `Δt` from
 the problem — so absolute time only ever reaches the vector field, and all six problems are
 autonomous. Advancing each step in a [local time frame](@ref "Time stepping in a local frame") is
-therefore exact, and it removes the limit entirely: every precision now runs every horizon. The
-explicit methods are bit-identical to the old global-clock results; the implicit ones differ only at
-solver tolerance.
+therefore exact, and it removes the limit entirely: every precision runs every horizon. Against
+stepping along the problem's own grid (`localclock = false`) the explicit methods are bit-identical;
+the implicit ones differ only at solver tolerance.
 
-The same reasoning applied once more gives a sharper fix still. The implicit methods' *initial guess*
-was reaching its interpolation node by building an absolute stage time and differencing it back down —
+The same reasoning applied once more gives a sharper result still. The upstream *initial guess*
+reaches its interpolation node by building an absolute stage time and differencing it back down —
 even though that node is a tableau constant (`c[i]`) that needs no clock at all. Feeding the constant
 directly to `NormalizedHermiteExtrapolation` (see [Initial guess](@ref)) makes the partitioned
 Runge–Kutta methods entirely clock-independent: at `BFloat16` past the saturation point, stepping along
 the saturating grid and stepping in the local frame give *bit-identical* results. Where the local frame
 works around the coarse clock, this removes the dependence on it.
 
-A third instance turned up in the nonlinear solve — and this one is not confined to half precision. Its
-convergence test,
-`rfₐ ≤ f_abstol + f_reltol·‖F(x₀)‖`, was being applied with `f_abstol` pinned to `8eps(Float64)`
-regardless of the run's precision (see [Solver tolerances](@ref)). A half-precision residual bottoms
-out near `eps(T)`, so it could never satisfy that and every implicit solve burned its full
-1000-iteration budget on every step, without ever being *reported* as non-convergent. Scaling the
+The third instance sits in the nonlinear solve, and this one is not confined to half precision. Its
+convergence test is `rfₐ ≤ f_abstol + f_reltol·‖F(x₀)‖` (see [Solver tolerances](@ref)), and an
+`f_abstol` pinned to `8eps(Float64)` regardless of the run's precision is unsatisfiable: a
+half-precision residual bottoms out near `eps(T)`, so every implicit solve burns its full
+1000-iteration budget on every step without ever being *reported* as non-convergent. Scaling the
 tolerance to the run's own precision leaves `Float64` results bit-identical and the rest unchanged to
-round-off, while making the sweep 2.6–40× faster.
+round-off, and makes the sweep 2.6–40× faster.
 
-The `Float64` reference integrations then turned out to have the same disease. The 4D Lotka–Volterra
-`Gauss(8)` reference could not reach `8eps(Float64)` either — not because of precision but because of
-*conditioning* — and so exhausted all 1000 iterations on every step, silently, for a solution the study
-treats as ground truth. Scaling the floor by `√n` for `n` stage unknowns fixes it: **563× faster**, and
-the two reference solutions agree to `1.4e-12`, so the capped solve had converged all along without
-being able to certify it. Note the perverse coupling: the relative term is measured at the *initial
-guess*, so the better the extrapolation, the smaller `‖F(x₀)‖` and the more the test collapses onto the
-bare absolute floor — improving the guess makes convergence harder to certify.
+The `Float64` reference integrations have the same disease from a different cause. The 4D
+Lotka–Volterra `Gauss(8)` reference cannot reach `8eps(Float64)` either — not because of precision but
+because of *conditioning* — and so exhausts all 1000 iterations on every step, silently, for a solution
+the study treats as ground truth. Scaling the floor with the stage size covers it: **two to three
+orders of magnitude faster**, and the loosened and capped solutions agree to `1.4e-12`, so the capped
+solve had converged all along without being able to certify it. Note the perverse coupling: the
+relative term is measured at the *initial guess*, so the better the extrapolation, the smaller
+`‖F(x₀)‖` and the more the test collapses onto the bare absolute floor — improving the guess makes
+convergence harder to certify.
 
-Four lessons generalise beyond this repository:
+Both factors are supplied by the stack itself: `GeometricIntegratorsBase` defaults `f_abstol` to
+`max(8, solversize(method, problem)) · eps(datatype(problem))`, precision- and size-scaled at once,
+and `SimpleSolvers` gives a stalling solve the stagnation exit that the residual test cannot provide.
+The study passes no tolerances of its own.
+
+Five lessons generalise beyond this repository:
 
 * **Distinguish the precision of the state from the precision of the bookkeeping.** They fail at very
   different horizons, and conflating them makes a solvable problem look like a hard limit.
-* **Prefer the invariant quantity to the reconstructed one.** Every one of these fixes has the same
+* **Prefer the invariant quantity to the reconstructed one.** All three instances have the same
   shape: something already known exactly — the timestep, a tableau node, the machine epsilon of the
-  working type — was being reconstructed from accumulated absolute values instead of used directly.
+  working type — gets reconstructed from accumulated absolute values instead of used directly.
   In `Float64` the difference is invisible; in half precision it is the whole story.
 * **Audit the tolerances too, not just the arrays.** A type-purity gate on the state will not catch a
-  convergence threshold that was written for `Float64`. Asking a `BFloat16` solve for a `Float64`
-  residual is not a stricter test, just an unsatisfiable one — and the `Float64` reference showed the
-  same thing can happen from conditioning alone.
-* **Treat "did not converge" as a result, not a warning.** All three of these had been running for a
-  long time, degrading accuracy or wasting most of the compute, while emitting nothing worse than a
-  log line. A solve that exhausts its iteration budget on every step should be as visible as one that
-  throws.
-* **A "half precision breaks the solver" symptom may be an accumulated-time problem.** The double
-  pendulum's `Float16` implicit solves used to throw `NaN` in the Newton direction, which was worked
-  around by swapping the initial-guess extrapolation. The real cause was that Hermite reads its
+  convergence threshold written for `Float64`. Asking a `BFloat16` solve for a `Float64` residual is
+  not a stricter test, just an unsatisfiable one — and the `Float64` reference shows the same thing
+  can happen from conditioning alone.
+* **Treat "did not converge" as a result, not a warning.** Each of these degrades accuracy or wastes
+  most of the compute while emitting nothing worse than a log line, so it can run unnoticed for a
+  long time. A solve that exhausts its iteration budget on every step should be as visible as one
+  that throws.
+* **A "half precision breaks the solver" symptom may be an accumulated-time problem.** On the double
+  pendulum a global clock costs the `Float16` implicit solves a `NaN` in the Newton direction, and
+  swapping the initial-guess extrapolation only papers over it. The cause is that Hermite reads its
   interval off the stored history times, and `Float16` resolves only about `0.004` near `t = 5` —
-  comparable to `Δt = 0.01` — so the extrapolation parameter was materially wrong long before the
-  clock saturated outright. In the local frame it is exact, the `NaN`s are gone at every precision,
-  and the workaround has been removed.
+  comparable to `Δt = 0.01` — so the extrapolation parameter goes materially wrong long before the
+  clock saturates outright. In the local frame it is exact and the `NaN`s do not occur at any
+  precision, so the default `HermiteExtrapolation` is the better guess everywhere.
 
 ## Genuine limits of half precision (not bugs)
 
-What remains after the clock is fixed is a much shorter list, and it is real:
+What remains once the clock is out of the way is a much shorter list, and it is real:
 
 * **The round-off floor on the achievable energy error.** This is the honest, unavoidable cost of
   reduced precision, and the one the study is really about: the bounded energy error of a symplectic
@@ -167,9 +172,10 @@ What remains after the clock is fixed is a much shorter list, and it is real:
   scenario at *both* 16-bit formats, and `PMVI Midpoint` in all but one; `CMDVI` and plain implicit
   midpoint each fail in one scenario. These are *singular* systems whose one-form involves `log(q)`, so
   the nonlinear iterate has to stay in the positive orthant — and 8–11 significand bits are not enough
-  to keep it there. The 4D failures say so literally, as a `DomainError with -1.21875`: the iterate
-  stepped to a negative coordinate and the logarithm was evaluated there. This is the one family where
-  the failures are not a clock or tolerance artefact,
+  to keep it there. The iterate steps to a negative coordinate, the logarithm is evaluated there, and
+  because GeometricProblems generates its vector fields with `nanmath = true` the model returns `NaN`
+  rather than throwing a `DomainError` — so the breakdown surfaces one level up, in the solver.
+  This is the one family where the failures are not a clock or tolerance artefact,
   and notably it is *not* a clean BFloat16-versus-Float16 story: the two 16-bit formats fail on
   overlapping but not identical sets, which is what one should expect when the breakdown turns on
   whether a particular iterate happens to step outside the domain.

@@ -60,8 +60,8 @@ keep the error small; reduced precision raises the floor without reordering the 
 The symplectic and midpoint/trapezoidal methods — together with the partitioned Gauss(2) variants —
 remain bounded over the full horizon; the non-symplectic Euler and explicit-midpoint methods drift.
 Both half precisions carry the full `t ≤ 10 000` horizon here, far past where a `T`-typed clock stops
-advancing (`t ≈ 2048` in Float16, `t ≈ 256` in BFloat16), which used to make the implicit methods fail
-outright — see [Time stepping in a local frame](@ref) and [Initial guess](@ref). This scenario also
+advancing (`t ≈ 2048` in Float16, `t ≈ 256` in BFloat16), which on its own would make the implicit
+methods fail outright — see [Time stepping in a local frame](@ref) and [Initial guess](@ref). This scenario also
 holds the *only* remaining failure among the four Hamiltonian problems: `Implicit Euler` at `Float16`
 throws a `NaN` in the Newton direction. A first-order dissipative method at `Δt = 1` is the least
 promising combination in the study, so it is a fitting place for the last one to sit.

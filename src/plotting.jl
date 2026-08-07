@@ -50,8 +50,8 @@ function _legend_below!(fig, methods, colors, np; extra = nothing)
     return nothing
 end
 
-# Figure width holds the per-panel width fixed (~430 px) and drops the old side-legend
-# column; the extra height leaves room for the legend row below.
+# One row of `np` panels at a fixed ~430 px each, with the title above and room left below for the
+# shared horizontal legend row that `_add_legend` fills.
 _grid_figure(np, ptitle) = begin
     fig = Figure(size = (430 * np, 500), fontsize = 14)
     Label(fig[0, 1:np], ptitle; fontsize = 18, font = :bold)

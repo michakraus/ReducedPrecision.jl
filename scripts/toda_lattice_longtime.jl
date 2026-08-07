@@ -1,8 +1,8 @@
 # Reduced-precision study: Toda lattice, coarse-step variant.
 #
 # Same pipeline as toda_lattice.jl (see there for why the initial conditions/parameters are
-# hand-built at precision T and why a Hamiltonian closure is used), but with a coarse timestep
-# Δt = 1 over the same horizon t = 100 (nt = 100 steps) as the short scenario. The solution error
+# hand-built at precision T), but with a coarse timestep Δt = 1 over the same horizon t = 100
+# (nt = 100 steps) as the short scenario. The solution error
 # is measured against a Float64 Gauss(8) reference computed at the *fine* step (Δt_ref = 0.1, as in
 # the short scenario) and subsampled onto the coarse grid; the reference integration is guarded.
 
@@ -26,7 +26,6 @@ _toda_problem(::Type{T}, dt) where {T} =
 make_problem(::Type{T})   where {T} = _toda_problem(T, Δt)
 make_reference(::Type{T}) where {T} = _toda_problem(T, Δt_ref)
 
-ham(t, q, p, params) = hamiltonian(t, q, p, params, N)
 coords(sol) = (Float64.(vec(Array(sol.q)[1, :])), Float64.(vec(Array(sol.p)[1, :])))
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
@@ -35,13 +34,13 @@ runs = run_study(make_problem)
 
 verify_precision(runs)
 
-plot_energy_error(runs, ham;
+plot_energy_error(runs, hamiltonian;
     path  = joinpath(plotdir, "toda_lattice_energy_error_dt_$(Δt).png"),
     title = "Toda Lattice — Relative Energy Error (Δt = 1, t ≤ 100)")
 
 # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
 reference = try
-    reference_solution(make_reference(Float64), Gauss(8))
+    integrate(make_reference(Float64), Gauss(8))
 catch e
     @warn "reference integration failed; skipping solution-error and trajectory plots" error = sprint(showerror, e)
     nothing

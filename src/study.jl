@@ -1,4 +1,25 @@
 # Running the method × precision sweep.
+#
+# ## Solver tolerances
+#
+# Nothing here scales the nonlinear solve's convergence criterion, because the framework already
+# does — and the sweep depends on it. Convergence is `rfₐ ≤ f_abstol + f_reltol·‖F(x₀)‖`, and the
+# better the initial guess, the smaller `‖F(x₀)‖` and the more the absolute term alone decides it.
+# A floor fixed at `8eps(Float64) ≈ 1.8e-15` is then unreachable for a half-precision residual, which
+# bottoms out near `eps(T)`. `GeometricIntegratorsBase.default_options` instead gives
+#
+#     f_abstol = max(8, solversize(method, problem)) · eps(datatype(problem))
+#
+# scaled to the working precision *and* to the stage-system size. This sweep's partitioned problems
+# report `solversize = 0` and so sit on the `max(8, …)` floor at `8eps(T)`; the `Gauss(8)` references
+# scale above it, which the degenerate 4D Lotka–Volterra one needs (32 unknowns, and a residual
+# bottoming out just above `8eps(Float64)` for conditioning rather than precision reasons). Caller
+# options are *merged into* `default_options`, so passing one does not drop `min_iterations`.
+#
+# `SimpleSolvers` supplies the complementary exit: a solve that stops making progress gives up after
+# `max_stalls` steps rather than running to `max_iterations`, and a line search shares its solver's
+# `Options` — which is what lets `verbosity = 0` (via `solveropts`) silence a configuration that is
+# expected to fail.
 
 """
     capped_final_time(T, t₁, Δt)
@@ -103,65 +124,6 @@ function reset_local!(solstep, Δt::T) where {T}
 end
 
 """
-    solver_tolerances(T)
-
-Nonlinear-solver convergence tolerance scaled to the working precision `T`, as a `NamedTuple` of
-`SimpleSolvers.Options` keywords.
-
-`SimpleSolvers` already builds its `Options` at the problem's precision, so `x_abstol = 2eps(T)`,
-`f_reltol = √eps(T)` and friends come out correctly scaled on their own. The exception is the
-*absolute* residual tolerance: `GeometricIntegratorsBase.default_options` hard-codes
-`f_abstol = 8eps()`, i.e. `8eps(Float64) ≈ 1.8e-15`, whatever the precision of the run — overriding
-SimpleSolvers' own `absolute_tolerance(T) = zero(T)`.
-
-That matters because convergence is assessed as `rfₐ ≤ f_abstol + f_reltol · ‖F(x₀)‖`. The better the
-initial guess, the smaller `‖F(x₀)‖` and the more the *absolute* term decides the test — so with a
-good guess and a `1.8e-15` floor a half-precision solve, whose residual bottoms out near `eps(T)`,
-can never satisfy it and exhausts `max_iterations` (1000) on every step. That is slow, floods the log
-with trust-region warnings, and is meaningless as a criterion: it asks a `BFloat16` solve to deliver a
-`Float64` residual.
-
-Scaling it as `8eps(T)` reproduces the current value exactly at `Float64` and lets the lower
-precisions stop once they have converged as far as their arithmetic allows.
-
-The two-argument form additionally scales by the size `n` of the stage system, as `8·√n·eps(T)`: the
-residual is measured as an `l2` norm over `n` components, whose own round-off grows like `√n`, so an
-`n`-independent absolute floor is dimensionally wrong. This matters for the high-stage-count reference
-integrations — see [`reference_solution`](@ref).
-"""
-solver_tolerances(::Type{T}) where {T} = (f_abstol = 8 * Float64(eps(T)),)
-solver_tolerances(::Type{T}, n::Integer) where {T} = (f_abstol = 8 * sqrt(n) * Float64(eps(T)),)
-
-"""
-    reference_solution(problem, method; kwargs...)
-
-Integrate `problem` with `method` and return the solution, for use as the high-accuracy reference that
-a study measures its solution error against.
-
-This is `integrate(problem, method)` with the nonlinear solve's absolute residual tolerance scaled to
-the size of the stage system via [`solver_tolerances`](@ref), rather than left at the stack's fixed
-`8eps()`.
-
-The references here are high-stage-count rules (`Gauss(8)`), so their stage systems are large: 16
-unknowns for the pendulum, 32 for the double pendulum and the 4D Lotka–Volterra system, 256 for the
-16-site Toda lattice. Most of them still reach `8eps(Float64) ≈ 1.8e-15` — but the 4D Lotka–Volterra
-system does not. It is degenerate, posed with the quasi-canonical reduced gauge matrix, and its
-residual bottoms out just above that threshold, so the solve exhausted all 1000 iterations on *every*
-step. Loosening the floor by the ~5.7× that `√32` supplies converges it in a handful of iterations
-instead: measured over 20 steps, 4 capped solves and 0.59 s become 0 and 0.002 s.
-
-Two things made this worth fixing rather than tolerating. It dominated the cost of a full
-`run_all.jl`, and — because a non-convergent solve is only reported as a warning — a *reference*
-solution was being used without having actually met its convergence criterion.
-"""
-function reference_solution(problem, method; kwargs...)
-    isimplicit(method) === true || return integrate(problem, method; kwargs...)
-    n = length(nlsolution(GeometricIntegrator(problem, method)))
-    opts = solver_tolerances(datatype(problem), n)
-    return integrate(problem, method; default_options(method)..., opts..., kwargs...)
-end
-
-"""
     integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing) -> (sol, diverged)
 
 Integrate `problem` with `method` step by step (replicating GeometricIntegrators' own stepping
@@ -174,21 +136,22 @@ divergence point. Returns the solution and the divergence step (`nothing` if the
 `bound`). Pass `bound = nothing` to disable the magnitude check (the non-finite check still fires).
 
 For implicit methods the nonlinear solve uses `solver` (default the trust-region `DogLeg`, which
-is more robust than the line-search `Newton` in reduced precision); explicit methods carry no
-solver and ignore it. Pass `solver = Newton()` to reproduce the previous behaviour.
+is more robust than the line-search `Newton` in reduced precision; pass `solver = Newton()` to
+compare); explicit methods carry no solver and ignore it.
 
 `linesearch` selects the line-search method for the nonlinear solve (e.g. `Backtracking()`); the
 default `nothing` leaves the solver's own default in place (`Backtracking` for `Newton`; `DogLeg`
 is a trust-region method and ignores it, as do explicit methods). `max_iterations` caps the
 nonlinear iterations per step (default `nothing` → the solver default of 1000); lowering it makes
-hopeless implicit solves at a coarse timestep bail out early instead of churning.
+hopeless implicit solves at a coarse timestep bail out early instead of churning, though it is
+rarely the binding constraint, since a solve that stops making progress already gives up after
+`max_stalls = 2` steps.
 
-The solve's absolute residual tolerance comes from [`solver_tolerances`](@ref) at the problem's
-precision, which is what stops the half-precision solves from exhausting `max_iterations` on an
-unreachable `Float64` residual. Pass `solveropts` to override it (or anything else
-`SimpleSolvers.Options` accepts). All overrides are forwarded alongside the integrator's
-`default_options`, so `min_iterations` is preserved — passing any option keyword otherwise replaces
-the whole default set.
+`solveropts` passes `SimpleSolvers.Options` keywords through to the nonlinear solve — e.g.
+`(verbosity = 0,)` to silence a configuration that is *expected* to fail, or an `f_abstol` of your
+own. It is empty by default, since the framework's tolerances are already precision- and size-scaled
+(see the note at the top of this file), and overrides are merged into the method's `default_options`
+rather than replacing them.
 
 `initialguess` overrides the per-step initial guess (the extrapolation seeding the nonlinear solve)
 for implicit methods; the default `nothing` uses the method's own default (`HermiteExtrapolation()`
@@ -202,7 +165,7 @@ every step via [`reset_local!`](@ref), which is what makes long horizons possibl
 precision. Pass `false` to advance it along the problem's own `T`-typed time grid, which saturates
 at low precision and is retained only to demonstrate that failure.
 """
-function integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing, initialguess = nothing, localclock = true, solveropts = solver_tolerances(datatype(problem)))
+function integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing, initialguess = nothing, localclock = true, solveropts = (;))
     overrides = merge(
         solveropts,
         linesearch     === nothing ? (;) : (; linesearch),
@@ -210,9 +173,7 @@ function integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(), line
     )
     iguesskw = initialguess === nothing ? (;) : (; initialguess)
     integrator = if isimplicit(method) === true
-        isempty(overrides) ?
-            GeometricIntegrator(problem, method; solver, iguesskw...) :
-            GeometricIntegrator(problem, method; solver, iguesskw..., default_options(method)..., overrides...)
+        GeometricIntegrator(problem, method; solver, iguesskw..., overrides...)
     else
         GeometricIntegrator(problem, method)
     end
@@ -270,11 +231,10 @@ on) and the method default elsewhere (where Midpoint would regress the multi-sta
 
     initialguess = T -> T in (BFloat16, Float16) ? MidpointExtrapolation() : nothing
 
-`solveropts` is resolved the same way: by default the callable [`solver_tolerances`](@ref), applied
-per precision. Pass a `NamedTuple` to use one fixed set of `SimpleSolvers.Options` keywords for every
-run instead.
+`solveropts` is resolved the same way — a `NamedTuple` of `SimpleSolvers.Options` keywords applied to
+every run, or a callable `T -> NamedTuple` resolved per precision. See [`integrate_bounded`](@ref).
 """
-function run_study(make_problem; methods = ALL_METHODS, precisions = PRECISIONS, bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing, initialguess = nothing, localclock = true, solveropts = solver_tolerances)
+function run_study(make_problem; methods = ALL_METHODS, precisions = PRECISIONS, bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing, initialguess = nothing, localclock = true, solveropts = (;))
     runs = Run[]
     for T in precisions
         prob = make_problem(T)

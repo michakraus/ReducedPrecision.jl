@@ -17,10 +17,10 @@ problem form runs the whole method set for a fair comparison.
 
 The implementation is split into logical units:
 
-- `bfloat16_compat.jl` — `Base`/`NaNMath` methods BFloat16s.jl lacks but the stack needs;
+- `bfloat16_compat.jl` — `Base` and `NaNMath` methods BFloat16s.jl / NaNMath lack but the stack needs;
 - `methods.jl`         — precisions, the `MethodSpec` registry and the plotting method groups;
 - `initial_guess.jl`   — a tableau-driven (clock-free) initial guess for the partitioned RK methods;
-- `study.jl`           — the `Run` type, the `run_study` sweep and the solver tolerances;
+- `study.jl`           — the `Run` type and the `run_study` sweep (plus a note on solver tolerances);
 - `diagnostics.jl`     — precision-purity checks and the error metrics;
 - `plotting.jl`        — the CairoMakie plotting routines.
 """
@@ -32,7 +32,7 @@ using GeometricIntegrators
 using GeometricIntegratorsBase: GeometricIntegratorsBase, GeometricIntegrator, Solution,
     solutionstep, current, state, nhistory, cache, nlsolution, extrapolate!,
     HermiteExtrapolation, MidpointExtrapolation, NormalizedHermiteExtrapolation
-import GeometricIntegratorsBase: initmethod, isimplicit, default_options
+import GeometricIntegratorsBase: initmethod, isimplicit
 using GeometricSolutions
 using GeometricBase
 using GeometricEquations: parameters, GeometricProblem, PODEProblem, HODEProblem
@@ -45,7 +45,7 @@ export BFloat16
 export PRECISIONS, MethodSpec, GEOMETRIC_METHODS, NONGEOMETRIC_METHODS, ALL_METHODS
 export EULER_METHODS, OTHER_METHODS, GAUSS2_METHODS, METHOD_GROUPS
 export LV2D_METHODS, LV4D_METHODS, LV2D_GROUPS, LV4D_GROUPS
-export Run, run_study, integrate_bounded, reset_local!, solver_tolerances, reference_solution
+export Run, run_study, integrate_bounded, reset_local!
 export assert_precision, verify_precision
 export capped_final_time
 export DogLeg, Newton, StrongWolfe, Backtracking

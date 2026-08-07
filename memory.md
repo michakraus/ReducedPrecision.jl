@@ -9,15 +9,20 @@ precision (BFloat16, Float16, Float32, Float64) on example problems from Geometr
 
 - **`Project.toml`** — package name/uuid + deps (`CairoMakie`, `BFloat16s`, `NaNMath` + the Geometric*
   ecosystem), all resolved from the **registry** (no `[sources]`; `[compat]` pins the working versions).
-  `GeometricIntegratorsBase` has a `0.4.2` lower bound because that is the release that added
-  `NormalizedHermiteExtrapolation`, which `src/initial_guess.jl` needs. For local work against the
+  `GeometricIntegratorsBase` has a `0.5.1` lower bound: v0.4.2 added `NormalizedHermiteExtrapolation`,
+  which `src/initial_guess.jl` needs, and v0.5.1 brought the size-scaled `f_abstol` default and the
+  `(method, problem)` argument order of `default_options`. For local work against the
   sibling checkouts, dev-link them into the git-ignored Manifest with
   `pkg> dev ../GeometricBase ../GeometricEquations …`. Test-only `Test` via `[extras]`/`[targets]`.
 - **`src/`** — reusable pipeline, split into logical units and stitched together by
   `ReducedPrecision.jl` (usings/exports/`include`s only):
   - `bfloat16_compat.jl` — `Base`/`NaNMath` methods BFloat16s.jl v0.6.1 lacks but the stack needs
     (`rem` — hence `fld`/`div`/`mod`, on which float-range and therefore `Solution` construction
-    depend — plus `Integer(::BFloat16)`, `BFloat16(::BigInt)`, `sincos`, `NaNMath.log`).
+    depend — plus `Integer(::BFloat16)`, `BFloat16(::BigInt)`, `sincos`, and all eleven of NaNMath's
+    domain-guarded functions: `sin cos tan asin acos acosh atanh log log2 log10 log1p`. Only
+    `NaNMath.log` was needed until GeometricProblems v0.8.0 started passing `nanmath = true` to every
+    symbolic generation, at which point the generated vector fields reached the NaNMath variant of
+    every elementary function they contain and the BFloat16 double pendulum died on `NaNMath.cos`).
   - `initial_guess.jl` — the tableau-driven, clock-free `initial_guess!` for `IPRK` on PODE/HODE.
   - `methods.jl` — `PRECISIONS` (4, BFloat16 first), `MethodSpec`, the method registries, and the
     plotting groups. `ALL_METHODS` (12) = `GEOMETRIC_METHODS` (4) + `NONGEOMETRIC_METHODS` (4) +
@@ -203,23 +208,38 @@ limit until the quantity was fixed:
    at all. Result: the partitioned RK methods are now **completely clock-independent** — at BFloat16
    past the saturation point, `localclock = true` and `false` give bit-identical results. Needs
    GeometricIntegratorsBase ≥ 0.4.2, the release that added `NormalizedHermiteExtrapolation`.
-3. **The solver tolerance.** `GeometricIntegratorsBase.default_options` pins `f_abstol = 8eps()` —
-   `8eps(Float64)` — at every precision. Since convergence is `rfₐ ≤ f_abstol + f_reltol·‖F(x₀)‖`, and a
-   good guess makes `‖F(x₀)‖` small, a half-precision residual could never satisfy it: every implicit
-   solve burnt all 1000 iterations *per step*, silently. `run_study` now defaults to
-   `solver_tolerances(T) = (f_abstol = 8eps(T),)`. Float64 bit-identical, others unchanged to round-off,
-   2.6–40× faster, and `run_all.jl`'s log dropped from **900 MB** to a few MB.
-4. **The same tolerance in the Float64 references.** The `Gauss(8)` reference for the 4D Lotka–Volterra
-   system could not reach `8eps(Float64)` either — not from precision but from *conditioning* (it is the
-   degenerate one, with `A_quasicanonical_reduced`) — and so capped out on every step for a solution the
-   study treats as ground truth. `reference_solution(problem, method)` scales the floor by `√n` for `n`
-   stage unknowns (dimensionally right: the residual is an `l2` norm over `n` components). **563×
-   faster** on LV4D (36.9 s → 0.066 s for 500 steps, 270 capped → 0), references agree to 1.4e-12. All
-   ten `Gauss(8)` call sites in `scripts/` now use it. Probed the rest: pendulum (n=16), double pendulum
-   (n=32), Toda (n=**256**) and LV2D (n=16) all reached `8eps` already, so this is not a size effect —
-   `√n` is simply a principled floor that happens to supply the 5.7× LV4D needs.
-   Upstream gap worth reporting: `assess_convergence` has **no stagnation exit** — every path requires
-   the residual test, and `f_settled = rfₛ ≤ ‖F‖·f_suctol` cannot fire once `F` jitters at its own floor.
+3. **The solver tolerance** *(workaround retired — now upstream)*. `GeometricIntegratorsBase.default_options`
+   used to pin `f_abstol = 8eps()` — `8eps(Float64)` — at every precision. Since convergence is
+   `rfₐ ≤ f_abstol + f_reltol·‖F(x₀)‖`, and a good guess makes `‖F(x₀)‖` small, a half-precision residual
+   could never satisfy it: every implicit solve burnt all 1000 iterations *per step*, silently.
+   `run_study` defaulted to `solver_tolerances(T) = (f_abstol = 8eps(T),)`. Float64 bit-identical, others
+   unchanged to round-off, 2.6–40× faster, and `run_all.jl`'s log dropped from **900 MB** to a few MB.
+4. **The same tolerance in the Float64 references** *(workaround retired — now upstream)*. The `Gauss(8)`
+   reference for the 4D Lotka–Volterra system could not reach `8eps(Float64)` either — not from precision
+   but from *conditioning* (it is the degenerate one, with `A_quasicanonical_reduced`) — and so capped out
+   on every step for a solution the study treats as ground truth. `reference_solution(problem, method)`
+   scaled the floor by `√n` for `n` stage unknowns (dimensionally right: the residual is an `l2` norm over
+   `n` components). **563× faster** on LV4D (36.9 s → 0.066 s for 500 steps, 270 capped → 0), references
+   agree to 1.4e-12. Probed the rest: pendulum (n=16), double pendulum (n=32), Toda (n=**256**) and LV2D
+   (n=16) all reached `8eps` already, so this was not a size effect — `√n` was simply a principled floor
+   that happened to supply the 5.7× LV4D needs.
+
+   **Both (3) and (4) were removed on 2026-08-08** when the dependencies were bumped to
+   GeometricIntegrators 0.17 / GeometricIntegratorsBase 0.5.1 / SimpleSolvers 0.10.1 / GeometricProblems
+   0.8.2. GIBase 0.5.1 defaults to `f_abstol = max(8, solversize(method, problem)) · eps(datatype(problem))`
+   — the same quantity, precision- *and* size-scaled — and merges caller options into `default_options`
+   instead of replacing them. For the partitioned sweep `solversize` reports 0, so every run sits on the
+   `max(8, …)` floor at exactly `8eps(T)`; for the LV4D `Gauss(8)` reference it reports 32, giving
+   `32eps ≈ 7.1e-15` and the same fast convergence. `solver_tolerances` and `reference_solution` are gone
+   from the API; the scripts call plain `integrate` for their references, and `solveropts` (default empty)
+   remains the escape hatch. **Breaking signature:** `default_options(method)` → `default_options(method, problem)`,
+   as `solversize`/`nullvectorsize` also flipped to `(method, problem)`.
+   The upstream gap this file used to record — `assess_convergence` has **no stagnation exit** — is closed
+   too: SimpleSolvers 0.10 stops a stalled solve after `max_stalls = 2` steps, bounds a line search by its
+   own `linesearch_max_iterations`, and lets a line search share its solver's `Options`, so
+   `verbosity = 0` finally silences one. (There is no `muffle`/`QuietLogger` scaffolding in this
+   repository to retire — that helper lived in GeometricIntegrators' tests and scripts, where it was
+   replaced by `verbosity = 0` / `warn_iterations = 0`.)
 
 **Consequence for the method matrix:** with (1)–(3) in place, `HermiteExtrapolation` converges for every
 Gauss-family method at every precision on every Hamiltonian problem/scenario — so the old

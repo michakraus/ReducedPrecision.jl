@@ -28,7 +28,8 @@ reference. All three methods are type-pure at every precision.
 ![Energy error, variational integrators](figures/lotka_volterra_4d_energy_error_dt_0.01_variational.png)
 
 At Float32 and Float64 the three variational integrators conserve energy well; at Float16 the `VPRK`
-and `PMVI` solves fail (NaN directions or log-domain errors from the degenerate Lagrangian), while
+and `PMVI` solves fail with a `NaN` in the nonlinear-solver direction — the iterate leaves the
+positive orthant where the degenerate Lagrangian's `log(q)` is defined — while
 implicit midpoint still runs at the short step. `BFloat16` behaves much the same — see the
 [2D discussion](@ref "Lotka–Volterra 2D") for why the degenerate-Lagrangian systems are the one family
 whose half-precision failures are genuine rather than bookkeeping artefacts.

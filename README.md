@@ -24,11 +24,11 @@ cost of three significand bits, so it is the coarsest of the four (`eps` `2⁻�
 `2⁻¹⁰`) while being the hardest to overflow.
 
 A `T`-typed clock stops advancing once `ulp(t) ≥ Δt` — well before the horizons studied here, and much
-earlier for `BFloat16` than for `Float16` — which used to break the implicit methods outright. Two
-changes remove that limit, so every precision runs the full horizon: the solution step is advanced in a
-**local time frame** rather than along the problem's own time grid, and the implicit methods' initial
-guess is extrapolated from the **tableau's normalised nodes** instead of from differenced absolute
-times, which makes it independent of the clock altogether. See the
+earlier for `BFloat16` than for `Float16` — which on its own would break the implicit methods outright.
+Two mechanisms keep the clock out of the way, so every precision runs the full horizon: the solution
+step is advanced in a **local time frame** rather than along the problem's own time grid, and the
+implicit methods' initial guess is extrapolated from the **tableau's normalised nodes** instead of from
+differenced absolute times, which makes it independent of the clock altogether. See the
 [methodology](https://michakraus.github.io/ReducedPrecision.jl/stable/methodology/).
 
 The methods compared are:
@@ -46,11 +46,12 @@ implicit-midpoint integrator (`Implicit Midpoint`, `VPRK(Gauss(1))`, `PMVImidpoi
 `CMDVI`).
 
 The implicit solves use the trust-region **`DogLeg`** nonlinear solver (`SimpleSolvers`) by default,
-which is more robust in reduced precision than a line-search Newton iteration, with the solve's
-absolute residual tolerance scaled to the working precision and to the size of the stage system. The
-stack's default is a fixed `8eps(Float64)`, which neither a half-precision residual nor the degenerate
-4D Lotka–Volterra `Gauss(8)` reference can reach — both then exhausted all 1000 iterations on every
-step, silently.
+which is more robust in reduced precision than a line-search Newton iteration. Their absolute residual
+tolerance comes from the framework, scaled to the working precision *and* to the size of the stage
+system. Both factors matter: a floor fixed at `8eps(Float64)` is unreachable for a half-precision
+residual, and also for the degenerate 4D Lotka–Volterra `Gauss(8)` reference, whose obstruction is
+conditioning rather than precision — and a solve that cannot meet its criterion only warns, so it
+burns its whole iteration budget silently.
 
 A central design goal is **type purity**: every library in the stack (`GeometricIntegrators`,
 `GeometricIntegratorsBase`, `GeometricSolutions`, `GeometricEquations`, `GeometricBase`,

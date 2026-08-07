@@ -30,8 +30,8 @@
 # forms). That keeps this an *added* method rather than one overwriting the upstream definition, which
 # Julia rejects during precompilation.
 #
-# `NormalizedHermiteExtrapolation` arrived in GeometricIntegratorsBase v0.4.2, which `[compat]`
-# therefore requires as the lower bound.
+# This file needs `NormalizedHermiteExtrapolation`, i.e. GeometricIntegratorsBase ≥ v0.4.2. The
+# package's `[compat]` bound is tighter than that (v0.5.1) for the reasons given in `study.jl`.
 
 """
     initial_guess!(sol, history, params, int::GeometricIntegrator{<:IPRK,<:Union{PODEProblem,HODEProblem}})

@@ -24,16 +24,16 @@ level. In the two half precisions all four collapse onto a common round-off floo
 BFloat16, ≈ `1e-2` at Float16), so neither the order nor the symplecticity is visible: at 8–11
 significand bits, arithmetic dominates the method entirely.
 
-This scenario used to be the study's headline half-precision failure: the three implicit methods
-threw a `NaN` in the nonlinear-solver direction at Float16, and neither the trust-region `DogLeg`
-solver nor a `MidpointExtrapolation` initial guess reliably fixed it. The cause was not the solver
-but the *clock*. Hermite extrapolation reads its interval off the stored history times, and Float16
-resolves only about `0.004` near ``t = 5`` — comparable to ``\Delta t = 0.01`` — so the interval it
-differenced, and hence the initial guess, was materially wrong. Since the solution step is advanced
-in a [local time frame](@ref "Time stepping in a local frame"), the interval is exact and the
-breakdown is gone at every precision.
+This is the scenario in which a global clock costs the most. On the problem's own `T`-typed grid the
+three implicit methods throw a `NaN` in the nonlinear-solver direction at Float16, and neither the
+trust-region `DogLeg` solver nor a `MidpointExtrapolation` initial guess reliably avoids it — because
+the obstruction is not the solver but the *clock*. Hermite extrapolation reads its interval off the
+stored history times, and Float16 resolves only about `0.004` near ``t = 5`` — comparable to
+``\Delta t = 0.01`` — so the differenced interval, and hence the initial guess, is materially wrong.
+Advancing the solution step in a [local time frame](@ref "Time stepping in a local frame") makes the
+interval exact, and every method completes at every precision.
 
-The four partitioned-Gauss(2) variants are now informative at every precision. The
+The four partitioned-Gauss(2) variants are therefore informative at every precision. The
 symplectic-vs-duplicated tableau choice and the rounding-compensation coefficients ``â, b̂, ĉ``
 produce visibly different energy-error fine structure at Float32/Float64; in half precision the
 round-off floor swamps those differences.
@@ -78,12 +78,11 @@ solve now stays stable — with the line-search `Newton`/`Backtracking` solver c
 iterations, nothing trips the divergence guard. The geometric methods keep the smallest energy
 error: symplectic Euler A/B, the two Gauss rules and the partitioned Gauss(2) variants stay bounded
 around `1e-2`–`1e-1`, while the non-geometric methods drift up toward order one (explicit Euler
-worst, then explicit midpoint and implicit Euler). Every method now completes at every precision —
-this scenario used to lose the `Float16` Crank–Nicolson solve to a `NaN` in the Newton direction, and
-the `Float16` implicit solves generally to a breakdown that was mistaken for a half-precision limit
-until the [initial guess](@ref "Initial guess") was made independent of the clock. Reduced precision
-merely raises the error floor; the qualitative ranking is the same at all four precisions. As always
-for this chaotic system the fine `Δt = 0.01` run is the more informative one.
+worst, then explicit midpoint and implicit Euler). Every method completes at every precision, which at
+this coarse step depends on the same clock-independence as the fine-step scenario — see
+[Initial guess](@ref). Reduced precision merely raises the error floor; the qualitative ranking is the
+same at all four precisions. As always for this chaotic system the fine `Δt = 0.01` run is the more
+informative one.
 
 ### Solution error
 

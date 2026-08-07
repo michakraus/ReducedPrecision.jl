@@ -34,7 +34,7 @@ runs = run_study(make_problem; methods = LV4D_METHODS)
 verify_precision(runs)
 
 # high-precision reference (Float64, high-order symplectic, same time grid)
-reference = reference_solution(make_problem(Float64), Gauss(8))
+reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, ham; groups = LV4D_GROUPS,
     path  = joinpath(plotdir, "lotka_volterra_4d_energy_error_dt_$(Δt).png"),

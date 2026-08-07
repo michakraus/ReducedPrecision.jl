@@ -20,8 +20,8 @@ const nt = 10_000
 const t₁ = nt * Δt
 const Δt_ref = 0.1   # fine reference step (matches the short scenario)
 
-# GeometricProblems v0.7.0 dropped the `podeproblem(::Type{T})` precision constructor, so the
-# T-typed initial conditions are built here from the module defaults.
+# GeometricProblems has no `podeproblem(::Type{T})` precision constructor, so the T-typed initial
+# conditions are built here from the module defaults.
 make_problem(::Type{T})   where {T} =
     podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 make_reference(::Type{T}) where {T} =
@@ -39,7 +39,7 @@ plot_energy_error(runs, hamiltonian;
 
 # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
 reference = try
-    reference_solution(make_reference(Float64), Gauss(8))
+    integrate(make_reference(Float64), Gauss(8))
 catch e
     @warn "reference integration failed; skipping solution-error plot" error = sprint(showerror, e)
     nothing

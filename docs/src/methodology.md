@@ -28,6 +28,14 @@ BFloat16s.jl does not yet define every `Base` method the stack needs (`rem` — 
 construction from `BigInt`). `src/bfloat16_compat.jl` fills those in following BFloat16s' own
 `Float32` round-trip pattern.
 
+`NaNMath` has the same gap, and it is the larger one. Its domain-guarded functions — the variants that
+return `NaN` where `Base` would throw a `DomainError`, which is what lets an implicit solver reject a
+trial state outside a model's domain instead of aborting the run — are defined only for
+`Float16`/`Float32`/`Float64`. Since GeometricProblems v0.8.0 passes `nanmath = true` to every
+symbolically generated problem, an EulerLagrange-generated vector field reaches the NaNMath variant of
+*every* elementary function it contains, so all eleven (`sin`, `cos`, `tan`, `asin`, `acos`, `acosh`,
+`atanh`, `log`, `log2`, `log10`, `log1p`) are shimmed, mirroring NaNMath's own guards.
+
 ## Methods
 
 The methods are split into a *geometric* (symplectic) group and a *non-geometric* group. The line
@@ -164,9 +172,9 @@ apart at any precision and any horizon, and Hermite's extrapolation parameter is
 
 This is a relabelling, not a change of dynamics. Explicit methods (which carry no initial guess)
 produce **bit-identical** results either way; implicit methods differ only at solver tolerance
-(~`1e-16` in `Float64`, ~`1e-7` in `Float32`). Where the old global clock had *drifted* without yet
-saturating, the local frame is strictly more accurate — `Float16` resolves only about `0.004` near
-`t = 5`, comparable to `Δt = 0.01`, so the differenced interval was materially wrong. Two details it
+(~`1e-16` in `Float64`, ~`1e-7` in `Float32`). It is also strictly more accurate than a global clock
+that has *drifted* without yet saturating: `Float16` resolves only about `0.004` near `t = 5`,
+comparable to `Δt = 0.01`, so a differenced interval there is materially wrong. Two details it
 depends on: the whole history must be relabelled after `reset!` (which copies stale times along with
 the state), and the frame must be anchored at non-negative times, because
 `MidpointExtrapolation`'s sub-stepping loop for partitioned problems tests `abs(t + extrap.Δt) <
@@ -203,13 +211,13 @@ The effect is measurable: with this guess the partitioned Runge–Kutta methods 
 **clock-independent**. At `BFloat16`, `Δt = 0.1`, `t ≤ 100` — well past the `t ≈ 16` saturation point —
 `localclock = true` and `localclock = false` produce *bit-identical* results.
 
-Taken together with the local time frame, that leaves the two mechanisms with complementary jobs, and
-worth being precise about which does what. On the four **Hamiltonian** problems every method is either
-explicit (and so has no initial guess to spoil) or a partitioned Runge–Kutta method whose guess is now
-clock-free — so there the tableau-driven guess alone suffices and the local frame is redundant. The
-local frame is what carries the **Lotka–Volterra** (IODE/LODE) integrators, whose own `initial_guess!`
-methods still difference absolute times. It is kept unconditionally because it is free, and because it
-protects any method added later that has not been given a clock-free guess.
+The two mechanisms have complementary jobs, and it is worth being precise about which does what. On
+the four **Hamiltonian** problems every method is either explicit (and so has no initial guess to
+spoil) or a partitioned Runge–Kutta method whose guess is clock-free — so there the tableau-driven
+guess alone suffices and the local frame is redundant. The local frame is what carries the
+**Lotka–Volterra** (IODE/LODE) integrators, whose own `initial_guess!` methods difference absolute
+times. It is applied unconditionally because it is free, and because it protects any method added
+later that has not been given a clock-free guess.
 
 Two implementation notes. `NormalizedHermiteExtrapolation` expects derivative samples scaled by `Δt`
 and returns a `Δt`-scaled derivative, while the integrator cache holds unscaled vector-field values, so
@@ -224,8 +232,8 @@ integrator type, so the originating method cannot be recovered at dispatch time.
 choice regardless, since `Gauss(2)` and `PRK Gauss(2)` are the same integrator here and would otherwise
 be seeded differently.
 
-`NormalizedHermiteExtrapolation` arrived in `GeometricIntegratorsBase` v0.4.2, which is therefore the
-`[compat]` lower bound for that dependency.
+`NormalizedHermiteExtrapolation` requires `GeometricIntegratorsBase` ≥ v0.4.2; the package's
+`[compat]` bound for that dependency is tighter (v0.5.1), set by the next section.
 
 ## Solver tolerances
 
@@ -236,55 +244,53 @@ solve's *convergence criterion*, which is assessed as
 rfₐ ≤ f_abstol + f_reltol · ‖F(x₀)‖
 ```
 
-`SimpleSolvers` builds its `Options` from the state's element type, so `x_abstol = 2eps(T)` and
-`f_reltol = √eps(T)` scale correctly on their own. But
-`GeometricIntegratorsBase.default_options` pins the *absolute* residual tolerance to `f_abstol =
-8eps()` — that is `8eps(Float64) ≈ 1.8e-15` — whatever precision the run is in.
+`run_study` and `integrate_bounded` pass no tolerances of their own; every term above has to be
+scaled by the stack, and each is. `SimpleSolvers` builds its `Options` from the state's element type,
+giving `x_abstol = 2eps(T)` and `f_reltol = √eps(T)`, and
+`GeometricIntegratorsBase.default_options` supplies the absolute term as
 
-The better the initial guess, the smaller `‖F(x₀)‖` and the more that absolute term decides the test.
-A half-precision residual bottoms out near `eps(T)` and so can never reach `1.8e-15`: every implicit
-solve then exhausts its 1000-iteration budget on *every step*. `run_study` therefore overrides it with
-`solver_tolerances(T) = (f_abstol = 8eps(T),)`, which is the identical value at `Float64` and lets the
-lower precisions stop once they have converged as far as their arithmetic allows. Pass
-`solveropts = (;)` to restore the unscaled behaviour, or any other `SimpleSolvers.Options` keywords to
-override it further.
+```
+f_abstol = max(8, solversize(method, problem)) · eps(datatype(problem))
+```
 
-Verified against the unscaled setting: `Float64` results are **bit-identical**, `Float32` differs by
-at most `eps(Float32)`, `Float16` by less than `eps(Float16)/16`, and `BFloat16` by a few ulp — all at
-round-off level. What changes is cost: the sweep runs about 2.6× faster at most precisions and ~40×
-faster at `Float32`, and stops emitting a trust-region warning per wasted iteration (a full
-`run_all.jl` previously wrote a 900 MB log).
+scaled to the working precision *and* to the size of the stage system. Caller options are **merged
+into** that bundle rather than replacing it, so overriding one keyword does not silently drop
+`min_iterations = 1`.
 
-### The same tolerance, at Float64
+Both factors are load-bearing, and for different reasons.
 
-The absolute floor is not only a reduced-precision problem. The `Gauss(8)` **reference** integrations
-are `Float64`, so `8eps()` is the "right" value for them by the argument above — and yet one of them
-could not reach it either. The 4D Lotka–Volterra reference exhausted all 1000 iterations on *every*
-step: 270 of 500 steps capped, 36.9 s for 500 steps.
+**The precision factor.** The better the initial guess, the smaller `‖F(x₀)‖` and the more the
+*absolute* term alone decides the test — so an improved guess makes convergence *harder* to certify,
+which is the wrong way round and is what makes a mis-scaled floor bite here in particular. A
+half-precision residual bottoms out near `eps(T)`, so an absolute floor fixed at
+`8eps(Float64) ≈ 1.8e-15` is simply unreachable: every implicit solve then runs to its iteration
+limit, on every step, for a result that was already as good as the arithmetic allows. The partitioned
+problems of this study report `solversize = 0` and so sit on the `max(8, …)` floor at `8eps(T)`,
+which is the value the argument above asks for at each precision.
 
-Two things are worth drawing out. First, the failure is **silent** — a non-convergent solve is only a
-warning, so a *reference* solution was being used without having met its convergence criterion.
-Second, the relative term `f_reltol·‖F(x₀)‖` is measured at the **initial guess**, so the better the
-extrapolation, the smaller `‖F(x₀)‖`, and the more the test reduces to the bare absolute floor. A
-better initial guess makes convergence *harder* to certify — which is the wrong way round, and is why
-this surfaced here at the same time as the tableau-driven guess.
+**The size factor.** The `Gauss(8)` **reference** integrations are `Float64`, so `8eps()` is the
+"right" value for them by the same argument — and for four of the five it is: the pendulum (16
+unknowns), the double pendulum (32), the Toda lattice (**256**) and the 2D Lotka–Volterra system (16)
+all reach it with nothing capped. The 4D Lotka–Volterra system does not. It is the degenerate one,
+posed with the quasi-canonical reduced gauge matrix, and its residual bottoms out just above that
+threshold — so the obstruction is *conditioning*, not dimension. The size factor nevertheless covers
+it: at 32 unknowns it gives `32eps ≈ 7.1e-15`, roughly a 4× loosening, and the reference converges in
+a handful of iterations. Scaling by the stage size is dimensionally the right thing anyway, the
+residual being an `l2` norm over `n` components whose own round-off grows with `n`.
 
-It is not a size effect, though: probing every reference in the study, the pendulum (16 unknowns), the
-double pendulum (32), the Toda lattice (**256**) and the 2D Lotka–Volterra system (16) all reach
-`8eps()` with nothing capped. Only the 4D Lotka–Volterra system fails, and it is the degenerate one,
-posed with the quasi-canonical reduced gauge matrix — so it is *conditioning*, not dimension.
+The failure mode this avoids is worth naming, because it is silent: a non-convergent solve is only a
+warning, so an unreachable floor lets a *reference* solution be used without having met its
+convergence criterion.
 
-`reference_solution` nevertheless scales the floor by `√n` for `n` stage unknowns, which is
-dimensionally the right thing (the residual is an `l2` norm over `n` components, whose own round-off
-grows like `√n`), supplies the ~5.7× that `√32` needs, and leaves the other four references untouched.
-The 4D reference then converges in a handful of iterations: **563× faster** (36.9 s → 0.066 s over 500
-steps), with the two reference solutions agreeing to `1.4e-12` — the capped solve had effectively
-converged all along, it just could never say so.
+`SimpleSolvers` supplies the complementary exit. `assess_convergence` cannot certify a solve that has
+converged as far as its arithmetic allows but cannot say so, so a solve that stops making progress is
+stopped instead: after `max_stalls = 2` stalled steps it gives up with one actionable message. A line
+search is bounded by its own `linesearch_max_iterations` rather than by `max_iterations`, and shares
+its solver's `Options` — which is what lets `verbosity = 0` reach it.
 
-The underlying gap is upstream: `assess_convergence` has no **stagnation** criterion. Every path
-requires the residual test to pass; there is no "the iterate and the residual have both stopped
-changing, so this is as good as the arithmetic allows" exit, and `f_settled` cannot supply one because
-it compares the successive change to `f_suctol·‖F‖`, which fails once `F` jitters at its own floor.
+`solveropts` is the escape hatch: any `SimpleSolvers.Options` keywords, applied to every run or
+resolved per precision by a callable `T -> NamedTuple`. `(verbosity = 0,)` is the useful one here,
+silencing a configuration that is *expected* to fail.
 
 ## Type-purity verification
 

@@ -71,11 +71,11 @@ diverge exponentially (reaching ≈ `1e300` in Float64, clipped at the plot's `1
 the symplectic methods and the Gauss collocation rules — and the partitioned
 Gauss(2) variants — remain bounded over the *entire* ``10^4`` time units, at every precision. This
 horizon is far beyond where a `T`-typed clock stops advancing in half precision (`t ≈ 2048` in
-Float16, `t ≈ 256` in BFloat16 at this `Δt`), which used to make the implicit methods fail outright.
-The [local time frame](@ref "Time stepping in a local frame") and the tableau-driven
+Float16, `t ≈ 256` in BFloat16 at this `Δt`), which on its own would make the implicit methods fail
+outright. The [local time frame](@ref "Time stepping in a local frame") and the tableau-driven
 [initial guess](@ref "Initial guess") between them remove that limit — for the methods here it is
 really the initial guess that does the work, since every method in this study is either explicit
-(and so has no initial guess to spoil) or a partitioned Runge–Kutta method whose guess is now
+(and so has no initial guess to spoil) or a partitioned Runge–Kutta method whose guess is
 clock-free.
 
 ### Solution error

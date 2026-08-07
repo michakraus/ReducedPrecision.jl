@@ -31,8 +31,8 @@ make_reference(::Type{T}) where {T} = _dp_problem(T, Δt_ref)
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
-# See double_pendulum.jl: the default HermiteExtrapolation guess needs no reduced-precision
-# workaround now that the solution step is advanced in a local time frame.
+# The default HermiteExtrapolation guess is the right one at every precision here; see
+# double_pendulum.jl for why that depends on the local-frame stepping of `integrate_bounded`.
 runs = run_study(make_problem;
     solver = Newton(), linesearch = Backtracking(), max_iterations = 100)
 
@@ -44,7 +44,7 @@ plot_energy_error(runs, hamiltonian;
 
 # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
 reference = try
-    reference_solution(make_reference(Float64), Gauss(8))
+    integrate(make_reference(Float64), Gauss(8))
 catch e
     @warn "reference integration failed; skipping solution-error plot" error = sprint(showerror, e)
     nothing

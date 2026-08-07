@@ -2,14 +2,17 @@ using ReducedPrecision
 using Test
 
 using GeometricBase: datatype, timetype, ntime
-using GeometricIntegrators: Gauss, integrate
-using GeometricIntegratorsBase: ExplicitEuler
-using GeometricProblems.HarmonicOscillator: podeproblem, hamiltonian, exact_solution
+using GeometricIntegrators: Gauss
+using GeometricIntegratorsBase: ExplicitEuler, GeometricIntegrator, default_options, initmethod
+import GeometricIntegratorsBase
+import NaNMath
+import SimpleSolvers
+using GeometricProblems.HarmonicOscillator: podeproblem, odeproblem, hamiltonian, exact_solution
 import GeometricProblems.HarmonicOscillator as HO
 
-# A small, fast harmonic-oscillator problem (10 steps) at precision T. GeometricProblems v0.7.0
-# dropped the `podeproblem(::Type{T})` precision constructor, so build the T-typed initial
-# conditions from the module defaults.
+# A small, fast harmonic-oscillator problem (10 steps) at precision T. GeometricProblems has no
+# `podeproblem(::Type{T})` precision constructor, so build the T-typed initial conditions from the
+# module defaults.
 make_ho(::Type{T}) where {T} =
     podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(1.0)), timestep = T(0.1))
 
@@ -17,6 +20,36 @@ make_ho(::Type{T}) where {T} =
 runof(runs, name) = only(filter(r -> r.method.name == name, runs))
 
 @testset "ReducedPrecision.jl" begin
+
+    @testset "BFloat16 compatibility shims" begin
+        # `src/bfloat16_compat.jl` fills the gaps BFloat16s.jl and NaNMath leave. The NaNMath ones
+        # are load-bearing for the whole BFloat16 column: GeometricProblems passes `nanmath = true`
+        # to every symbolic generation, so an EulerLagrange vector field reaches the NaNMath variant
+        # of *every* elementary function it contains — `cos` for the double pendulum, `log` for the
+        # Lotka–Volterra one-form ϑ — and a missing one is a `MethodError` per run.
+        guarded = (:sin, :cos, :tan, :asin, :acos, :atanh, :log, :log2, :log10, :log1p, :acosh)
+        for f in guarded
+            g = getfield(NaNMath, f)
+            x = f === :acosh ? BFloat16(2.0) : BFloat16(0.5)      # in-domain for all of them
+            @test g(x) isa BFloat16                                # method exists, stays in type
+            @test g(x) === BFloat16(g(Float32(x)))                 # agrees with the Float32 value
+        end
+        # the domain guards return NaN rather than throwing, which is the whole point
+        @test isnan(NaNMath.log(BFloat16(-1)))
+        @test isnan(NaNMath.asin(BFloat16(2)))
+        @test isnan(NaNMath.acosh(BFloat16(0.5)))
+        @test isnan(NaNMath.cos(BFloat16(Inf)))
+        # NaNMath's own `sqrt`/`pow`/`max`/`min` are generic enough to need no shim
+        @test NaNMath.sqrt(BFloat16(0.25)) === BFloat16(0.5)
+        @test isnan(NaNMath.sqrt(BFloat16(-1)))
+        @test isnan(NaNMath.pow(BFloat16(-2), BFloat16(0.5)))
+
+        # the Base gaps: `rem` (hence the float range behind `Solution`), `Integer`, `sincos`
+        @test rem(BFloat16(5), BFloat16(3)) === BFloat16(2)
+        @test Integer(BFloat16(7)) == 7
+        @test sincos(BFloat16(0.5)) === (sin(BFloat16(0.5)), cos(BFloat16(0.5)))
+        @test BFloat16(big(3)) === BFloat16(3.0)
+    end
 
     @testset "method registry" begin
         @test length(ALL_METHODS) == 12
@@ -91,34 +124,50 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         end
     end
 
-    @testset "solver tolerance scales with the precision" begin
-        # `GeometricIntegratorsBase.default_options` pins `f_abstol` to `8eps(Float64)` at every
-        # precision, which a half-precision residual can never reach.
-        @test solver_tolerances(Float64).f_abstol == 8eps(Float64)   # unchanged where it was right
-        @test solver_tolerances(Float32).f_abstol > solver_tolerances(Float64).f_abstol
-        @test solver_tolerances(Float16).f_abstol > solver_tolerances(Float32).f_abstol
-        @test solver_tolerances(BFloat16).f_abstol > solver_tolerances(Float16).f_abstol
+    @testset "solver tolerance is precision- and size-scaled upstream" begin
+        # `run_study` passes no tolerances of its own, so the sweep depends on
+        # `GeometricIntegratorsBase.default_options` scaling `f_abstol` as
+        # `max(8, solversize(method, problem)) * eps(datatype(problem))`. These assertions pin that
+        # property: they are the tripwire that fires if a release reverts to an absolute floor fixed
+        # at `8eps(Float64)`, which a half-precision residual can never reach.
+        fabstol(prob, method) =
+            Float64(default_options(initmethod(method, prob), prob).f_abstol)
 
-        # The size-scaled form loosens the floor by √n, which is what makes the high-stage-count
-        # reference integrations converge instead of exhausting `max_iterations`.
-        @test solver_tolerances(Float64, 1).f_abstol == solver_tolerances(Float64).f_abstol
-        @test solver_tolerances(Float64, 32).f_abstol ≈ sqrt(32) * solver_tolerances(Float64).f_abstol
-        @test solver_tolerances(BFloat16, 32).f_abstol > solver_tolerances(Float64, 32).f_abstol
-
-        # `reference_solution` must agree with a plain `integrate` to well within the accuracy any
-        # plot resolves — it only stops the solve once it has genuinely converged.
-        a = reference_solution(make_ho(Float64), Gauss(8))
-        b = integrate(make_ho(Float64), Gauss(8))
-        @test maximum(abs, Array(a.q) .- Array(b.q)) < 1e-10
-        @test maximum(abs, Array(a.p) .- Array(b.p)) < 1e-10
-
-        # Scaling the tolerance must not move a Float64 solve: same tolerance, same iterates.
-        a = run_study(make_ho; methods = GAUSS2_METHODS, precisions = (Float64,))
-        b = run_study(make_ho; methods = GAUSS2_METHODS, precisions = (Float64,), solveropts = (;))
-        for (ra, rb) in zip(a, b)
-            @test Array(ra.sol.q) == Array(rb.sol.q)
-            @test Array(ra.sol.p) == Array(rb.sol.p)
+        # The precision scaling: an implicit solve is never asked for a residual its own arithmetic
+        # cannot express.
+        for T in PRECISIONS
+            @test fabstol(make_ho(T), Gauss(2)) == 8 * Float64(eps(T))
         end
+        for (lo, hi) in ((Float64, Float32), (Float32, Float16), (Float16, BFloat16))
+            @test fabstol(make_ho(hi), Gauss(2)) > fabstol(make_ho(lo), Gauss(2))
+        end
+
+        # The size scaling, which is what keeps the high-stage-count `Gauss(8)` references from
+        # stalling. It only bites above the `max(8, …)` floor, so it needs a stage system of more
+        # than 8 unknowns: the 2-dof oscillator in ODE form under `Gauss(8)` has 16. (The partitioned
+        # form the sweep itself uses reports `solversize = 0` and so sits on the floor at every stage
+        # count.)
+        ho_ode(::Type{T}) where {T} =
+            odeproblem(T.([HO.q₀[1], HO.p₀[1]]); timespan = (T(0.0), T(1.0)), timestep = T(0.1))
+        @test fabstol(ho_ode(Float64), Gauss(2)) == 8eps(Float64)     # 4 unknowns: on the floor
+        @test fabstol(ho_ode(Float64), Gauss(8)) == 16eps(Float64)    # 16 unknowns: above it
+        @test fabstol(ho_ode(Float16), Gauss(8)) > fabstol(ho_ode(Float64), Gauss(8))
+
+        # A `solveropts` override must reach the nonlinear solve, and must be *merged* into the
+        # method's `default_options` rather than replacing them — `min_iterations = 1` decides
+        # whether a step is taken at all, so losing it is silent and severe. Built the way
+        # `integrate_bounded` builds it.
+        int = GeometricIntegrator(make_ho(Float64), Gauss(2);
+            solver = DogLeg(), f_abstol = 1e-2, verbosity = 0)
+        opts = SimpleSolvers.config(GeometricIntegratorsBase.solver(int))
+        @test opts.f_abstol == 1e-2          # the override arrived
+        @test opts.verbosity == 0            # …including the one that silences the solve
+        @test opts.min_iterations == 1       # …without dropping the framework default
+
+        # and the same options survive a whole sweep
+        runs = run_study(make_ho; methods = GAUSS2_METHODS, precisions = (Float64,),
+            solveropts = (verbosity = 0,))
+        @test all(r.sol !== nothing && r.error === nothing for r in runs)
     end
 
     @testset "half precision carries a saturating horizon" begin

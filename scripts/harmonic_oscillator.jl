@@ -18,9 +18,9 @@ const Δt = 0.1
 const nt = 10_000
 const t₁ = nt * Δt
 
-# Partitioned form at precision T, with initial conditions *and* time all in T. As of
-# GeometricProblems v0.7.0 the `podeproblem(::Type{T})` precision constructor is gone, so the
-# T-typed initial conditions are built here from the module defaults.
+# Partitioned form at precision T, with initial conditions *and* time all in T. GeometricProblems has
+# no `podeproblem(::Type{T})` precision constructor, so the T-typed initial conditions are built here
+# from the module defaults.
 make_problem(::Type{T}) where {T} =
     podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 

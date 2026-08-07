@@ -16,8 +16,8 @@ const Δt = 0.1
 const nt = 10_000
 const t₁ = nt * Δt
 
-# GeometricProblems v0.7.0 dropped the `podeproblem(::Type{T})` precision constructor, so the
-# T-typed initial conditions are built here from the module defaults.
+# GeometricProblems has no `podeproblem(::Type{T})` precision constructor, so the T-typed initial
+# conditions are built here from the module defaults.
 make_problem(::Type{T}) where {T} =
     podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 
@@ -28,7 +28,7 @@ runs = run_study(make_problem)
 verify_precision(runs)
 
 # high-precision reference (Float64, high-order symplectic, same time grid)
-reference = reference_solution(make_problem(Float64), Gauss(8))
+reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, hamiltonian;
     path  = joinpath(plotdir, "pendulum_energy_error_dt_$(Δt).png"),
