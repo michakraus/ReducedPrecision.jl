@@ -1,6 +1,6 @@
 name = "ReducedPrecision"
 uuid = "d2e65b2c-6080-43d8-a8ee-5f31b9147c22"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Michael Kraus <michael.kraus@ipp.mpg.de>"]
 
 [deps]

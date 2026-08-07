@@ -93,3 +93,25 @@ the scripts (so the figures exist), build it with:
 ```julia
 julia --project=docs docs/make.jl
 ```
+
+`docs/make.jl` copies `plots/*.png` into the (git-ignored) `docs/src/figures/` and embeds them, so
+the figures are never committed — they are regenerated on every build.
+
+## Development
+
+Dependencies resolve from the **registry**; `[compat]` pins the working versions and there is no
+`[sources]` block. To work against local checkouts of the `Geometric*` packages instead, dev-link
+them into the git-ignored manifest:
+
+```julia
+pkg> dev ../GeometricBase ../GeometricEquations ../GeometricIntegrators ../GeometricIntegratorsBase ../GeometricProblems ../GeometricSolutions
+```
+
+Beware of signature drift between a registered package and its local checkout: a script that fails
+in CI but not locally is usually this, not a bug in the script.
+
+The two CI workflows are split by concern. `CI.yml` runs **only the tests**, on a matrix of Julia
+LTS (`1.10`) and latest stable (`1`) across Linux, macOS and Windows. `Documenter.yml` runs all
+twelve experiment scripts to regenerate `plots/`, then builds and deploys the site.
+
+Changes are recorded in [`CHANGELOG.md`](CHANGELOG.md).
