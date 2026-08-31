@@ -55,7 +55,7 @@ harmless — an initial guess can only affect how many solver iterations a step 
 step converges to — and empirically every method converges at every precision.
 """
 function GeometricIntegratorsBase.initial_guess!(sol, history, params,
-        int::GeometricIntegrator{<:IPRK,<:Union{PODEProblem,HODEProblem}})
+        int::GeometricIntegrator{<:IPRK, <:Union{PODEProblem, HODEProblem}})
     local x = nlsolution(int)
     local C = cache(int)
     local Δt = timestep(int)
@@ -83,11 +83,11 @@ function GeometricIntegratorsBase.initial_guess!(sol, history, params,
     D = length(C.V[1])
     for i in eachstage(int)
         for k in 1:D
-            x[2*(D*(i-1)+k-1)+1] = 0
-            x[2*(D*(i-1)+k-1)+2] = 0
+            x[2 * (D * (i - 1) + k - 1) + 1] = 0
+            x[2 * (D * (i - 1) + k - 1) + 2] = 0
             for j in eachstage(int)
-                x[2*(D*(i-1)+k-1)+1] += tableau(int).q.a[i, j] * C.V[j][k]
-                x[2*(D*(i-1)+k-1)+2] += tableau(int).p.a[i, j] * C.F[j][k]
+                x[2 * (D * (i - 1) + k - 1) + 1] += tableau(int).q.a[i, j] * C.V[j][k]
+                x[2 * (D * (i - 1) + k - 1) + 2] += tableau(int).p.a[i, j] * C.F[j][k]
             end
         end
     end

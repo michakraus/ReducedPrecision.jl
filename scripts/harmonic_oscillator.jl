@@ -21,8 +21,9 @@ const t₁ = nt * Δt
 # Partitioned form at precision T, with initial conditions *and* time all in T. GeometricProblems has
 # no `podeproblem(::Type{T})` precision constructor, so the T-typed initial conditions are built here
 # from the module defaults.
-make_problem(::Type{T}) where {T} =
+function make_problem(::Type{T}) where {T}
     podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
+end
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
@@ -35,14 +36,14 @@ verify_precision(runs)
 reference = exact_solution(make_problem(Float64))
 
 plot_energy_error(runs, hamiltonian;
-    path  = joinpath(plotdir, "harmonic_oscillator_energy_error_dt_$(Δt).png"),
+    path = joinpath(plotdir, "harmonic_oscillator_energy_error_dt_$(Δt).png"),
     title = "Harmonic Oscillator — Relative Energy Error (Δt = 0.1, t ≤ 1000)")
 
 plot_solution_error(runs, reference;
-    path  = joinpath(plotdir, "harmonic_oscillator_solution_error_dt_$(Δt).png"),
+    path = joinpath(plotdir, "harmonic_oscillator_solution_error_dt_$(Δt).png"),
     title = "Harmonic Oscillator — Solution Error (Δt = 0.1, t ≤ 1000, vs. analytic)")
 
 plot_solution(runs; reference = reference,
-    path   = joinpath(plotdir, "harmonic_oscillator_solution_dt_$(Δt).png"),
-    title  = "Harmonic Oscillator — Phase-Space Trajectory (Δt = 0.1, t ≤ 1000)",
+    path = joinpath(plotdir, "harmonic_oscillator_solution_dt_$(Δt).png"),
+    title = "Harmonic Oscillator — Phase-Space Trajectory (Δt = 0.1, t ≤ 1000)",
     xlabel = "q", ylabel = "p")

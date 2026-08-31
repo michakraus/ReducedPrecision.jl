@@ -17,7 +17,7 @@ end
 
 # Wong colour-blind-safe palette, ordered for maximum contrast between the first few entries.
 const _PALETTE = ["#0072B2", "#D55E00", "#009E73", "#CC79A7",
-                  "#E69F00", "#56B4E9", "#F0E442", "#999999"]
+    "#E69F00", "#56B4E9", "#F0E442", "#999999"]
 const _REFERENCE_COLOR = :black
 
 # Colour map for a single group's `methods`, assigned by position from the high-contrast leading
@@ -37,9 +37,9 @@ end
 # Legend as a horizontal row below all panels (spanning every column). `extra` optionally
 # appends one more (element, label) entry, e.g. the reference trajectory.
 function _legend_below!(fig, methods, colors, np; extra = nothing)
-    elems  = LineElement[LineElement(color = colors[s.name],
-                          linestyle = s.geometric ? :solid : :dash,
-                          linewidth = 2) for s in methods]
+    elems = LineElement[LineElement(color = colors[s.name],
+                            linestyle = s.geometric ? :solid : :dash,
+                            linewidth = 2) for s in methods]
     labels = String[s.name for s in methods]
     if extra !== nothing
         push!(elems, extra[1])
@@ -71,14 +71,15 @@ end
 
 # Generic grid plot: one panel per precision, one line per method, log-scale y. Methods are
 # drawn (and listed) in the order given by `methods`; every panel shares the same y-limits.
-function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods, colors, precisions = PRECISIONS)
+function _plot_grid(
+        runs, seriesfun, ylabel, ptitle, path; methods, colors, precisions = PRECISIONS)
     np = length(precisions)
 
     # First pass: collect each panel's (spec, t, y) series, its x-range and the global finite range.
     finite_pos = Float64[]
     panels = Vector{Any}[]
     xrs = Any[]                                            # per-panel x-range (horizons may differ
-                                                           # across precisions, e.g. a capped Float16)
+    # across precisions, e.g. a capped Float16)
     for T in precisions
         series = Any[]
         xr = nothing
@@ -110,13 +111,13 @@ function _plot_grid(runs, seriesfun, ylabel, ptitle, path; methods, colors, prec
             yscale = log10,
             xlabel = "t",
             ylabel = j == 1 ? ylabel : "",
-            title  = _precision_label(T),
+            title = _precision_label(T)
         )
         for (spec, t, y) in panels[j]
             lines!(ax, t, y;
                 color = colors[spec.name],
                 linestyle = spec.geometric ? :solid : :dash,
-                linewidth = 2,
+                linewidth = 2
             )
         end
         ylims!(ax, yl...)                                  # same y-limits for every panel
@@ -184,7 +185,7 @@ function _plot_trajectory_grid(runs, coordsfun, xlabel, ylabel, ptitle, path;
             lines!(ax, xs, ys;
                 color = colors[spec.name],
                 linestyle = spec.geometric ? :solid : :dash,
-                linewidth = 1.5,
+                linewidth = 1.5
             )
         end
         if lims !== nothing
@@ -213,9 +214,10 @@ with the group label appended to `path` (e.g. `_euler`, `_other`, `_gauss2`).
 function plot_energy_error(runs, hamiltonian; path, title, groups = METHOD_GROUPS)
     figs = Any[]
     for (label, methods) in groups
-        push!(figs, _plot_grid(runs, run -> energy_error(run.sol, hamiltonian),
-            "|ΔH / H₀|", "$title — $(_group_title(label))", _suffix_path(path, label);
-            methods, colors = _method_colors(methods)))
+        push!(figs,
+            _plot_grid(runs, run -> energy_error(run.sol, hamiltonian),
+                "|ΔH / H₀|", "$title — $(_group_title(label))", _suffix_path(path, label);
+                methods, colors = _method_colors(methods)))
     end
     return figs
 end
@@ -230,9 +232,10 @@ figure is written per entry in `groups`, with the group label appended to `path`
 function plot_solution_error(runs, reference; path, title, groups = METHOD_GROUPS)
     figs = Any[]
     for (label, methods) in groups
-        push!(figs, _plot_grid(runs, run -> solution_error(run.sol, reference),
-            "‖x − x_ref‖", "$title — $(_group_title(label))", _suffix_path(path, label);
-            methods, colors = _method_colors(methods)))
+        push!(figs,
+            _plot_grid(runs, run -> solution_error(run.sol, reference),
+                "‖x − x_ref‖", "$title — $(_group_title(label))", _suffix_path(path, label);
+                methods, colors = _method_colors(methods)))
     end
     return figs
 end
@@ -252,9 +255,10 @@ function plot_solution(runs; path, title, reference = nothing,
         coords = _default_coords, xlabel = "q", ylabel = "p", groups = METHOD_GROUPS)
     figs = Any[]
     for (label, methods) in groups
-        push!(figs, _plot_trajectory_grid(runs, coords, xlabel, ylabel,
-            "$title — $(_group_title(label))", _suffix_path(path, label);
-            methods, colors = _method_colors(methods), reference))
+        push!(figs,
+            _plot_trajectory_grid(runs, coords, xlabel, ylabel,
+                "$title — $(_group_title(label))", _suffix_path(path, label);
+                methods, colors = _method_colors(methods), reference))
     end
     return figs
 end

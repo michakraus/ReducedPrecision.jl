@@ -16,24 +16,24 @@ end
 
 makedocs(;
     sitename = "ReducedPrecision.jl",
-    authors  = "Michael Kraus",
-    format   = Documenter.HTML(; prettyurls = get(ENV, "CI", nothing) == "true"),
+    authors = "Michael Kraus",
+    format = Documenter.HTML(; prettyurls = get(ENV, "CI", nothing) == "true"),
     pages = [
-        "Home"        => "index.md",
+        "Home" => "index.md",
         "Methodology" => "methodology.md",
         "Experiments" => [
             "Harmonic Oscillator" => "harmonic_oscillator.md",
-            "Pendulum"            => "pendulum.md",
-            "Double Pendulum"     => "double_pendulum.md",
-            "Toda Lattice"        => "toda_lattice.md",
-            "Lotka–Volterra 2D"   => "lotka_volterra_2d.md",
-            "Lotka–Volterra 4D"   => "lotka_volterra_4d.md",
+            "Pendulum" => "pendulum.md",
+            "Double Pendulum" => "double_pendulum.md",
+            "Toda Lattice" => "toda_lattice.md",
+            "Lotka–Volterra 2D" => "lotka_volterra_2d.md",
+            "Lotka–Volterra 4D" => "lotka_volterra_4d.md"
         ],
-        "Findings" => "findings.md",
-    ],
+        "Findings" => "findings.md"
+    ]
 )
 
 deploydocs(;
-    repo      = "github.com/michakraus/ReducedPrecision.jl.git",
-    devbranch = "main",
+    repo = "github.com/michakraus/ReducedPrecision.jl.git",
+    devbranch = "main"
 )

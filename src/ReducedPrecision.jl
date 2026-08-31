@@ -30,8 +30,10 @@ import BFloat16s: BFloat16          # `import`, since `bfloat16_compat.jl` exten
 import NaNMath                      # ditto, for its BFloat16 `log`
 using GeometricIntegrators
 using GeometricIntegratorsBase: GeometricIntegratorsBase, GeometricIntegrator, Solution,
-    solutionstep, current, state, nhistory, cache, nlsolution, extrapolate!,
-    HermiteExtrapolation, MidpointExtrapolation, NormalizedHermiteExtrapolation
+                                solutionstep, current, state, nhistory, cache, nlsolution,
+                                extrapolate!,
+                                HermiteExtrapolation, MidpointExtrapolation,
+                                NormalizedHermiteExtrapolation
 import GeometricIntegratorsBase: initmethod, isimplicit
 using GeometricSolutions
 using GeometricBase

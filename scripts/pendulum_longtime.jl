@@ -22,10 +22,12 @@ const Δt_ref = 0.1   # fine reference step (matches the short scenario)
 
 # GeometricProblems has no `podeproblem(::Type{T})` precision constructor, so the T-typed initial
 # conditions are built here from the module defaults.
-make_problem(::Type{T})   where {T} =
+function make_problem(::Type{T}) where {T}
     podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
-make_reference(::Type{T}) where {T} =
+end
+function make_reference(::Type{T}) where {T}
     podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt_ref))
+end
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
 
@@ -34,7 +36,7 @@ runs = run_study(make_problem)
 verify_precision(runs)
 
 plot_energy_error(runs, hamiltonian;
-    path  = joinpath(plotdir, "pendulum_energy_error_dt_$(Δt).png"),
+    path = joinpath(plotdir, "pendulum_energy_error_dt_$(Δt).png"),
     title = "Pendulum — Relative Energy Error (Δt = 1, t ≤ 10⁴)")
 
 # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
@@ -47,11 +49,11 @@ end
 
 if reference !== nothing
     plot_solution_error(runs, reference;
-        path  = joinpath(plotdir, "pendulum_solution_error_dt_$(Δt).png"),
+        path = joinpath(plotdir, "pendulum_solution_error_dt_$(Δt).png"),
         title = "Pendulum — Solution Error (Δt = 1, t ≤ 10⁴, vs. Float64 Gauss(8) at Δt = 0.1)")
 
     plot_solution(runs; reference = reference,
-        path   = joinpath(plotdir, "pendulum_solution_dt_$(Δt).png"),
-        title  = "Pendulum — Phase-Space Trajectory (Δt = 1, t ≤ 10⁴)",
+        path = joinpath(plotdir, "pendulum_solution_dt_$(Δt).png"),
+        title = "Pendulum — Phase-Space Trajectory (Δt = 1, t ≤ 10⁴)",
         xlabel = "q", ylabel = "p")
 end

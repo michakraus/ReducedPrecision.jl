@@ -22,10 +22,10 @@ const t₀ = 0.0
 const t₁ = 10.0
 
 function make_problem(::Type{T}) where {T}
-    q₀     = T.(DP.θ₀)
-    p₀     = T.(DP.p₀)
-    tspan  = (T(t₀), T(t₁))
-    dt     = T(Δt)
+    q₀ = T.(DP.θ₀)
+    p₀ = T.(DP.p₀)
+    tspan = (T(t₀), T(t₁))
+    dt = T(Δt)
     params = DP.default_parameters(T)
     hodeproblem(q₀, p₀; timespan = tspan, timestep = dt, parameters = params)
 end
@@ -48,14 +48,14 @@ verify_precision(runs)
 reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, hamiltonian;
-    path  = joinpath(plotdir, "double_pendulum_energy_error_dt_$(Δt).png"),
+    path = joinpath(plotdir, "double_pendulum_energy_error_dt_$(Δt).png"),
     title = "Double Pendulum — Relative Energy Error (Δt = 0.01, t ≤ 10)")
 
 plot_solution_error(runs, reference;
-    path  = joinpath(plotdir, "double_pendulum_solution_error_dt_$(Δt).png"),
+    path = joinpath(plotdir, "double_pendulum_solution_error_dt_$(Δt).png"),
     title = "Double Pendulum — Solution Error (Δt = 0.01, t ≤ 10, vs. Float64 Gauss(8))")
 
 plot_solution(runs; reference = reference,
-    path   = joinpath(plotdir, "double_pendulum_solution_dt_$(Δt).png"),
-    title  = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
+    path = joinpath(plotdir, "double_pendulum_solution_dt_$(Δt).png"),
+    title = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
     xlabel = "θ₁", ylabel = "θ₂")

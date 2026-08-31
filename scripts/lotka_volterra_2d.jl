@@ -17,10 +17,12 @@ const nt = 1_000
 const t₁ = nt * Δt
 
 # Degenerate-Lagrangian (LODE) form at precision T, with initial conditions and time all in T.
-make_problem(::Type{T}) where {T} = lodeproblem(T.(LV.q₀);
-    timespan   = (T(0), T(t₁)),
-    timestep   = T(Δt),
-    parameters = LV.default_parameters(T))
+function make_problem(::Type{T}) where {T}
+    lodeproblem(T.(LV.q₀);
+        timespan = (T(0), T(t₁)),
+        timestep = T(Δt),
+        parameters = LV.default_parameters(T))
+end
 
 # Hamiltonian closure: the energy depends on q only, but energy_error evaluates it as (t,q,p,params).
 ham(t, q, p, params) = hamiltonian(t, q, params)
@@ -35,14 +37,14 @@ verify_precision(runs)
 reference = integrate(make_problem(Float64), Gauss(8))
 
 plot_energy_error(runs, ham; groups = LV2D_GROUPS,
-    path  = joinpath(plotdir, "lotka_volterra_2d_energy_error_dt_$(Δt).png"),
+    path = joinpath(plotdir, "lotka_volterra_2d_energy_error_dt_$(Δt).png"),
     title = "Lotka–Volterra 2D — Relative Energy Error (Δt = 0.01, t ≤ 10)")
 
 plot_solution_error(runs, reference; groups = LV2D_GROUPS,
-    path  = joinpath(plotdir, "lotka_volterra_2d_solution_error_dt_$(Δt).png"),
+    path = joinpath(plotdir, "lotka_volterra_2d_solution_error_dt_$(Δt).png"),
     title = "Lotka–Volterra 2D — Solution Error (Δt = 0.01, t ≤ 10, vs. Float64 Gauss(8))")
 
 plot_solution(runs; reference = reference, groups = LV2D_GROUPS,
-    path   = joinpath(plotdir, "lotka_volterra_2d_solution_dt_$(Δt).png"),
-    title  = "Lotka–Volterra 2D — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
+    path = joinpath(plotdir, "lotka_volterra_2d_solution_dt_$(Δt).png"),
+    title = "Lotka–Volterra 2D — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
     xlabel = "q₁", ylabel = "q₂")

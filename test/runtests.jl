@@ -3,31 +3,34 @@ using Test
 
 using GeometricBase: datatype, timetype, ntime
 using GeometricIntegrators: Gauss
-using GeometricIntegratorsBase: ExplicitEuler, GeometricIntegrator, default_options, initmethod
+using GeometricIntegratorsBase: ExplicitEuler, GeometricIntegrator, default_options,
+                                initmethod
 import GeometricIntegratorsBase
 import NaNMath
 import SimpleSolvers
-using GeometricProblems.HarmonicOscillator: podeproblem, odeproblem, hamiltonian, exact_solution
+using GeometricProblems.HarmonicOscillator: podeproblem, odeproblem, hamiltonian,
+                                            exact_solution
 import GeometricProblems.HarmonicOscillator as HO
 
 # A small, fast harmonic-oscillator problem (10 steps) at precision T. GeometricProblems has no
 # `podeproblem(::Type{T})` precision constructor, so build the T-typed initial conditions from the
 # module defaults.
-make_ho(::Type{T}) where {T} =
+function make_ho(::Type{T}) where {T}
     podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(1.0)), timestep = T(0.1))
+end
 
 # Fetch the run for a given method name.
 runof(runs, name) = only(filter(r -> r.method.name == name, runs))
 
 @testset "ReducedPrecision.jl" begin
-
     @testset "BFloat16 compatibility shims" begin
         # `src/bfloat16_compat.jl` fills the gaps BFloat16s.jl and NaNMath leave. The NaNMath ones
         # are load-bearing for the whole BFloat16 column: GeometricProblems passes `nanmath = true`
         # to every symbolic generation, so an EulerLagrange vector field reaches the NaNMath variant
         # of *every* elementary function it contains — `cos` for the double pendulum, `log` for the
         # Lotka–Volterra one-form ϑ — and a missing one is a `MethodError` per run.
-        guarded = (:sin, :cos, :tan, :asin, :acos, :atanh, :log, :log2, :log10, :log1p, :acosh)
+        guarded = (
+            :sin, :cos, :tan, :asin, :acos, :atanh, :log, :log2, :log10, :log1p, :acosh)
         for f in guarded
             g = getfield(NaNMath, f)
             x = f === :acosh ? BFloat16(2.0) : BFloat16(0.5)      # in-domain for all of them
@@ -64,15 +67,15 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         @test length(EULER_METHODS) == 4
         @test length(OTHER_METHODS) == 4
         groupnames = [Set(m.name for m in EULER_METHODS),
-                      Set(m.name for m in OTHER_METHODS),
-                      Set(m.name for m in GAUSS2_METHODS)]
+            Set(m.name for m in OTHER_METHODS),
+            Set(m.name for m in GAUSS2_METHODS)]
         @test union(groupnames...) == Set(m.name for m in ALL_METHODS)
         @test sum(length, groupnames) == length(ALL_METHODS)      # pairwise disjoint
 
         # the "other" group is a 2x2: explicit/implicit at order 2, then at order 4
         @test [m.name for m in OTHER_METHODS] ==
               ["Explicit Midpoint", "Explicit Runge-Kutta 4",
-               "Implicit Midpoint", "Implicit Runge-Kutta 4"]
+            "Implicit Midpoint", "Implicit Runge-Kutta 4"]
         @test [m.geometric for m in OTHER_METHODS] == [false, false, true, true]
         @test [g.first for g in METHOD_GROUPS] == ["euler", "other", "gauss2"]
     end
@@ -130,8 +133,7 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         # `max(8, solversize(method, problem)) * eps(datatype(problem))`. These assertions pin that
         # property: they are the tripwire that fires if a release reverts to an absolute floor fixed
         # at `8eps(Float64)`, which a half-precision residual can never reach.
-        fabstol(prob, method) =
-            Float64(default_options(initmethod(method, prob), prob).f_abstol)
+        fabstol(prob, method) = Float64(default_options(initmethod(method, prob), prob).f_abstol)
 
         # The precision scaling: an implicit solve is never asked for a residual its own arithmetic
         # cannot express.
@@ -147,8 +149,8 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         # than 8 unknowns: the 2-dof oscillator in ODE form under `Gauss(8)` has 16. (The partitioned
         # form the sweep itself uses reports `solversize = 0` and so sits on the floor at every stage
         # count.)
-        ho_ode(::Type{T}) where {T} =
-            odeproblem(T.([HO.q₀[1], HO.p₀[1]]); timespan = (T(0.0), T(1.0)), timestep = T(0.1))
+        ho_ode(::Type{T}) where {T} = odeproblem(
+            T.([HO.q₀[1], HO.p₀[1]]); timespan = (T(0.0), T(1.0)), timestep = T(0.1))
         @test fabstol(ho_ode(Float64), Gauss(2)) == 8eps(Float64)     # 4 unknowns: on the floor
         @test fabstol(ho_ode(Float64), Gauss(8)) == 16eps(Float64)    # 16 unknowns: above it
         @test fabstol(ho_ode(Float16), Gauss(8)) > fabstol(ho_ode(Float64), Gauss(8))
@@ -173,14 +175,15 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
     @testset "half precision carries a saturating horizon" begin
         # t₁ = 100 at Δt = 0.1 is far past where a BFloat16 global clock stops advancing (t ≈ 16).
         # Every method must nevertheless run the full horizon and stay type-pure.
-        make_long(::Type{T}) where {T} =
-            podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(100.0)), timestep = T(0.1))
+        make_long(::Type{T}) where {T} = podeproblem(
+            T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(100.0)), timestep = T(0.1))
 
         runs = run_study(make_long; precisions = (BFloat16,))
         @test all(r.sol !== nothing for r in runs)
         @test all(r.error === nothing for r in runs)
         @test all(assert_precision(r.prob, r.sol, BFloat16) for r in runs)
-        @test all(ntime(r.sol) > capped_final_time(BFloat16, 100.0, 0.1) / 0.1 for r in runs)
+        @test all(ntime(r.sol) > capped_final_time(BFloat16, 100.0, 0.1) / 0.1
+        for r in runs)
 
         # The partitioned RK methods take their initial guess from the tableau (see
         # `initial_guess.jl`), so no clock value enters it: their results must be *identical* whether
@@ -233,8 +236,8 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
         @test all(isfinite, se)
 
         # a finer-grid reference (here Δt/2) is subsampled onto the solution's coarser grid
-        make_ho_fine(::Type{T}) where {T} =
-            podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(1.0)), timestep = T(0.05))
+        make_ho_fine(::Type{T}) where {T} = podeproblem(
+            T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(1.0)), timestep = T(0.05))
         se_fine = solution_error(sea.sol, exact_solution(make_ho_fine(Float64)))
         @test length(se_fine) == length(tv)          # subsampled to the solution grid
         @test se_fine[1] ≈ 0.0 atol = 1e-12
@@ -258,8 +261,8 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
     @testset "divergence guard" begin
         # a coarse oscillator (Δt = 1) makes explicit Euler blow up while the symplectic
         # methods stay bounded
-        make_coarse(::Type{T}) where {T} =
-            podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(100.0)), timestep = T(1.0))
+        make_coarse(::Type{T}) where {T} = podeproblem(
+            T.(HO.q₀), T.(HO.p₀); timespan = (T(0.0), T(100.0)), timestep = T(1.0))
         runs = run_study(make_coarse; precisions = (Float64,), bound = 1e3)
 
         ee = runof(runs, "Explicit Euler")
@@ -303,5 +306,4 @@ runof(runs, name) = only(filter(r -> r.method.name == name, runs))
             groups = ["mid" => GAUSS2_METHODS])
         @test isfile(joinpath(dir, "grp_mid.png"))
     end
-
 end

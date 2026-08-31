@@ -11,8 +11,8 @@ and the element types of the stored `q`, `p` arrays all equal `T`. Throws an
 function assert_precision(prob, sol, ::Type{T}) where {T}
     @assert datatype(prob) === T "datatype(prob) = $(datatype(prob)) ≠ $T"
     @assert timetype(prob) === T "timetype(prob) = $(timetype(prob)) ≠ $T"
-    @assert datatype(sol)  === T "datatype(sol) = $(datatype(sol)) ≠ $T"
-    @assert timetype(sol)  === T "timetype(sol) = $(timetype(sol)) ≠ $T"
+    @assert datatype(sol) === T "datatype(sol) = $(datatype(sol)) ≠ $T"
+    @assert timetype(sol) === T "timetype(sol) = $(timetype(sol)) ≠ $T"
     @assert eltype(Array(sol.q)) === T "eltype(sol.q) = $(eltype(Array(sol.q))) ≠ $T"
     @assert eltype(Array(sol.p)) === T "eltype(sol.p) = $(eltype(Array(sol.p))) ≠ $T"
     return true
@@ -84,9 +84,12 @@ than the reference — as happens at reduced precision, where rounding `Δt` int
 count slightly — is correctly compared against the matching leading portion of the reference.
 """
 function solution_error(sol, reference)
-    q  = Float64.(Array(sol.q));       p  = Float64.(Array(sol.p))
-    qr = Float64.(Array(reference.q)); pr = Float64.(Array(reference.p))
-    nsol = size(q, 2); nref = size(qr, 2)
+    q = Float64.(Array(sol.q))
+    p = Float64.(Array(sol.p))
+    qr = Float64.(Array(reference.q))
+    pr = Float64.(Array(reference.p))
+    nsol = size(q, 2)
+    nref = size(qr, 2)
     if nref > nsol
         # reference on a finer (and possibly longer) grid: how many reference substeps fall in one
         # solution step is fixed by the ratio of their timesteps, NOT by (nref-1)/(nsol-1) — the
@@ -99,14 +102,13 @@ function solution_error(sol, reference)
         k = Float64(timestep(sol)) / Float64(timestep(reference))
         kr = round(Int, k)
         @assert kr ≥ 1 && isapprox(k, kr; rtol = 1e-2) "reference timestep does not refine the solution timestep (ratio = $k)"
-        idx = 1 .+ (0:nsol-1) .* kr
+        idx = 1 .+ (0:(nsol - 1)) .* kr
         @assert idx[end] ≤ nref "reference grid (nref=$nref) does not cover the solution horizon (needs index $(idx[end]))"
-        qr = qr[:, idx]; pr = pr[:, idx]
+        qr = qr[:, idx]
+        pr = pr[:, idx]
     end
     @assert size(q, 2) == size(qr, 2) "solution and reference have different lengths"
     n = size(q, 2)
-    return Float64[
-        sqrt(sum(abs2, @view(q[:, i]) .- @view(qr[:, i])) +
-             sum(abs2, @view(p[:, i]) .- @view(pr[:, i]))) for i in 1:n
-    ]
+    return Float64[sqrt(sum(abs2, @view(q[:, i]) .- @view(qr[:, i])) +
+                        sum(abs2, @view(p[:, i]) .- @view(pr[:, i]))) for i in 1:n]
 end

@@ -32,10 +32,10 @@ than `ImplicitMidpoint()` puts both on the same Runge–Kutta code path, which i
 the tableau-driven initial guess in [`initial_guess!`](@ref).
 """
 const GEOMETRIC_METHODS = MethodSpec[
-    MethodSpec("Symplectic Euler A",     SymplecticEulerA(), true),
-    MethodSpec("Symplectic Euler B",     SymplecticEulerB(), true),
-    MethodSpec("Implicit Midpoint",      Gauss(1),           true),
-    MethodSpec("Implicit Runge-Kutta 4", Gauss(2),           true),
+    MethodSpec("Symplectic Euler A", SymplecticEulerA(), true),
+    MethodSpec("Symplectic Euler B", SymplecticEulerB(), true),
+    MethodSpec("Implicit Midpoint", Gauss(1), true),
+    MethodSpec("Implicit Runge-Kutta 4", Gauss(2), true)
 ]
 
 """
@@ -44,10 +44,10 @@ twins (`ExplicitEulerRK` / `ImplicitEulerRK`), which auto-promote to partitioned
 PODE/HODE, so the whole set runs on a single partitioned problem form.
 """
 const NONGEOMETRIC_METHODS = MethodSpec[
-    MethodSpec("Explicit Euler",         ExplicitEulerRK(),  false),
-    MethodSpec("Implicit Euler",         ImplicitEulerRK(),  false),
-    MethodSpec("Explicit Midpoint",      ExplicitMidpoint(), false),
-    MethodSpec("Explicit Runge-Kutta 4", RK4(),              false),
+    MethodSpec("Explicit Euler", ExplicitEulerRK(), false),
+    MethodSpec("Implicit Euler", ImplicitEulerRK(), false),
+    MethodSpec("Explicit Midpoint", ExplicitMidpoint(), false),
+    MethodSpec("Explicit Runge-Kutta 4", RK4(), false)
 ]
 
 # Partitioned Gauss(2) variants (the third comparison group). All four are implicit partitioned
@@ -61,22 +61,31 @@ const NONGEOMETRIC_METHODS = MethodSpec[
 #   * the `…0` variants additionally zero the rounding-error compensation coefficients â, b̂, ĉ.
 # Each defines only a `tableau(method, T)` accessor, so `initmethod` rebuilds the tableau at the
 # run precision T (keeping every precision pure); everything downstream uses the concrete IPRK.
-struct GaussPRK   <: IPRKMethod end   # PartitionedTableau(Gauss(2))
-struct GaussSPRK  <: IPRKMethod end   # SymplecticPartitionedTableau(Gauss(2))
-struct GaussPRK0  <: IPRKMethod end   # GaussPRK,  with â = b̂ = ĉ = 0
+struct GaussPRK <: IPRKMethod end   # PartitionedTableau(Gauss(2))
+struct GaussSPRK <: IPRKMethod end   # SymplecticPartitionedTableau(Gauss(2))
+struct GaussPRK0 <: IPRKMethod end   # GaussPRK,  with â = b̂ = ĉ = 0
 struct GaussSPRK0 <: IPRKMethod end   # GaussSPRK, with â = b̂ = ĉ = 0
 
 # Reconstruct a tableau from its (already precision-T) a/b/c coefficients. The inner
 # constructor derives the compensation terms as `â = a .- convert(T, a)` etc.; since a/b/c
 # are already type T, the recomputed â/b̂/ĉ come out identically zero.
 _zero_hats(t::Tableau{T}) where {T} = Tableau{T}(t.name, t.o, t.s, t.a, t.b, t.c; R∞ = t.R∞)
-_zero_hats(pt::PartitionedTableau{T}) where {T} =
+function _zero_hats(pt::PartitionedTableau{T}) where {T}
     PartitionedTableau{T}(pt.name, pt.o, _zero_hats(pt.q), _zero_hats(pt.p); R∞ = pt.R∞)
+end
 
-GeometricBase.tableau(::GaussPRK,   ::Type{T} = Float64) where {T} = PartitionedTableau(TableauGauss(T, 2))
-GeometricBase.tableau(::GaussSPRK,  ::Type{T} = Float64) where {T} = SymplecticPartitionedTableau(TableauGauss(T, 2))
-GeometricBase.tableau(::GaussPRK0,  ::Type{T} = Float64) where {T} = _zero_hats(PartitionedTableau(TableauGauss(T, 2)))
-GeometricBase.tableau(::GaussSPRK0, ::Type{T} = Float64) where {T} = _zero_hats(SymplecticPartitionedTableau(TableauGauss(T, 2)))
+function GeometricBase.tableau(::GaussPRK, ::Type{T} = Float64) where {T}
+    PartitionedTableau(TableauGauss(T, 2))
+end
+function GeometricBase.tableau(::GaussSPRK, ::Type{T} = Float64) where {T}
+    SymplecticPartitionedTableau(TableauGauss(T, 2))
+end
+function GeometricBase.tableau(::GaussPRK0, ::Type{T} = Float64) where {T}
+    _zero_hats(PartitionedTableau(TableauGauss(T, 2)))
+end
+function GeometricBase.tableau(::GaussSPRK0, ::Type{T} = Float64) where {T}
+    _zero_hats(SymplecticPartitionedTableau(TableauGauss(T, 2)))
+end
 
 """
 Partitioned Gauss(2) variants (all symplectic). They differ only in implementation details:
@@ -89,10 +98,10 @@ partitioned problem — so it doubles as this group's baseline and as the fourth
 the [`OTHER_METHODS`](@ref) 2 × 2. Verified bit-identical at every precision.
 """
 const GAUSS2_METHODS = MethodSpec[
-    MethodSpec("PRK Gauss(2)",            GaussPRK(),   true),
-    MethodSpec("SPRK Gauss(2)",           GaussSPRK(),  true),
-    MethodSpec("PRK Gauss(2), â=b̂=ĉ=0",  GaussPRK0(),  true),
-    MethodSpec("SPRK Gauss(2), â=b̂=ĉ=0", GaussSPRK0(), true),
+    MethodSpec("PRK Gauss(2)", GaussPRK(), true),
+    MethodSpec("SPRK Gauss(2)", GaussSPRK(), true),
+    MethodSpec("PRK Gauss(2), â=b̂=ĉ=0", GaussPRK0(), true),
+    MethodSpec("SPRK Gauss(2), â=b̂=ĉ=0", GaussSPRK0(), true)
 ]
 
 """
@@ -130,9 +139,9 @@ per group. Scripts may pass their own `groups` to the plotting routines (e.g. th
 examples use a single variational-integrator group).
 """
 const METHOD_GROUPS = [
-    "euler"  => EULER_METHODS,
-    "other"  => OTHER_METHODS,
-    "gauss2" => GAUSS2_METHODS,
+    "euler" => EULER_METHODS,
+    "other" => OTHER_METHODS,
+    "gauss2" => GAUSS2_METHODS
 ]
 
 # --- Lotka–Volterra (degenerate Lagrangian) variational-integrator comparison ----------------
@@ -146,7 +155,9 @@ const METHOD_GROUPS = [
 # `GaussVPRK` wrapper mirrors the Runge–Kutta `initmethod(::RKMethod, ::GeometricProblem{…,TT})`
 # pattern to construct `VPRK(Gauss(1))` at the run precision `TT`.
 struct GaussVPRK <: VPRKMethod end
-initmethod(::GaussVPRK, ::GeometricProblem{ST,DT,TT}) where {ST,DT,TT} = VPRK(TableauGauss(TT, 1))
+function initmethod(::GaussVPRK, ::GeometricProblem{ST, DT, TT}) where {ST, DT, TT}
+    VPRK(TableauGauss(TT, 1))
+end
 # `isimplicit(::VPRKMethod)` inspects `tableau(method)`, which `GaussVPRK` only provides after
 # `initmethod` (at the run precision); declare it directly so the DogLeg solver gate applies.
 isimplicit(::GaussVPRK) = true
@@ -158,9 +169,9 @@ and differ only in implementation details.
 """
 const LV2D_METHODS = MethodSpec[
     MethodSpec("Implicit Midpoint", ImplicitMidpoint(), true),
-    MethodSpec("VPRK Gauss(1)",     GaussVPRK(),        true),
-    MethodSpec("PMVI Midpoint",     PMVImidpoint(),     true),
-    MethodSpec("CMDVI",             CMDVI(),            true),
+    MethodSpec("VPRK Gauss(1)", GaussVPRK(), true),
+    MethodSpec("PMVI Midpoint", PMVImidpoint(), true),
+    MethodSpec("CMDVI", CMDVI(), true)
 ]
 
 """
@@ -178,9 +189,9 @@ const LV4D_GROUPS = ["variational" => LV4D_METHODS]
 
 # Human-readable figure subtitle for a group label; unknown labels fall back to the label itself.
 const _GROUP_TITLES = Dict(
-    "euler"       => "Euler methods",
-    "other"       => "other methods",
-    "gauss2"      => "Gauss(2) variants",
-    "variational" => "implicit-midpoint variational integrators",
+    "euler" => "Euler methods",
+    "other" => "other methods",
+    "gauss2" => "Gauss(2) variants",
+    "variational" => "implicit-midpoint variational integrators"
 )
 _group_title(label) = get(_GROUP_TITLES, label, label)

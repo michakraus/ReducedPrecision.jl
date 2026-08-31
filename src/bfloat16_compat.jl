@@ -18,7 +18,9 @@
 
 Base.rem(x::BFloat16, y::BFloat16) = BFloat16(rem(Float32(x), Float32(y)))
 Base.atan(x::BFloat16, y::BFloat16) = BFloat16(atan(Float32(x), Float32(y)))
-Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = BFloat16(fma(Float32(x), Float32(y), Float32(z)))
+function Base.fma(x::BFloat16, y::BFloat16, z::BFloat16)
+    BFloat16(fma(Float32(x), Float32(y), Float32(z)))
+end
 
 # `Base.sincos` recurses into itself for BFloat16 (it has no `IEEEFloat` guard), overflowing the
 # stack rather than erroring; route it through the scalar `sin`/`cos` that BFloat16s does define.

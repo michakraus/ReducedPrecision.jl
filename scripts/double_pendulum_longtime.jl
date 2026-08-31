@@ -26,7 +26,7 @@ function _dp_problem(::Type{T}, dt) where {T}
         timespan = (T(t₀), T(t₁)), timestep = T(dt), parameters = DP.default_parameters(T))
 end
 
-make_problem(::Type{T})   where {T} = _dp_problem(T, Δt)
+make_problem(::Type{T}) where {T} = _dp_problem(T, Δt)
 make_reference(::Type{T}) where {T} = _dp_problem(T, Δt_ref)
 
 const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
@@ -39,7 +39,7 @@ runs = run_study(make_problem;
 verify_precision(runs)
 
 plot_energy_error(runs, hamiltonian;
-    path  = joinpath(plotdir, "double_pendulum_energy_error_dt_$(Δt).png"),
+    path = joinpath(plotdir, "double_pendulum_energy_error_dt_$(Δt).png"),
     title = "Double Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 10)")
 
 # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
@@ -52,11 +52,11 @@ end
 
 if reference !== nothing
     plot_solution_error(runs, reference;
-        path  = joinpath(plotdir, "double_pendulum_solution_error_dt_$(Δt).png"),
+        path = joinpath(plotdir, "double_pendulum_solution_error_dt_$(Δt).png"),
         title = "Double Pendulum — Solution Error (Δt = 0.1, t ≤ 10, vs. Float64 Gauss(8) at Δt = 0.01)")
 
     plot_solution(runs; reference = reference,
-        path   = joinpath(plotdir, "double_pendulum_solution_dt_$(Δt).png"),
-        title  = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.1, t ≤ 10)",
+        path = joinpath(plotdir, "double_pendulum_solution_dt_$(Δt).png"),
+        title = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.1, t ≤ 10)",
         xlabel = "θ₁", ylabel = "θ₂")
 end

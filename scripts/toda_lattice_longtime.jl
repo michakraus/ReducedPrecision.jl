@@ -11,19 +11,20 @@ using GeometricIntegrators: Gauss, integrate
 using GeometricProblems.TodaLattice: hodeproblem, hamiltonian
 import GeometricProblems.TodaLattice as TL
 
-const N  = 16       # lattice size
-const μ  = 0.3      # bump-width parameter of the initial condition
+const N = 16       # lattice size
+const μ = 0.3      # bump-width parameter of the initial condition
 const t₀ = 0.0
 const Δt = 1.0
 const nt = 100
 const t₁ = nt * Δt
 const Δt_ref = 0.1  # fine reference step (matches the short scenario)
 
-_toda_problem(::Type{T}, dt) where {T} =
+function _toda_problem(::Type{T}, dt) where {T}
     hodeproblem(N, T.(TL.compute_initial_q(μ, N)), zero(T.(TL.compute_initial_q(μ, N)));
         timespan = (T(t₀), T(t₁)), timestep = T(dt), parameters = TL.default_parameters(T))
+end
 
-make_problem(::Type{T})   where {T} = _toda_problem(T, Δt)
+make_problem(::Type{T}) where {T} = _toda_problem(T, Δt)
 make_reference(::Type{T}) where {T} = _toda_problem(T, Δt_ref)
 
 coords(sol) = (Float64.(vec(Array(sol.q)[1, :])), Float64.(vec(Array(sol.p)[1, :])))
@@ -35,24 +36,25 @@ runs = run_study(make_problem)
 verify_precision(runs)
 
 plot_energy_error(runs, hamiltonian;
-    path  = joinpath(plotdir, "toda_lattice_energy_error_dt_$(Δt).png"),
+    path = joinpath(plotdir, "toda_lattice_energy_error_dt_$(Δt).png"),
     title = "Toda Lattice — Relative Energy Error (Δt = 1, t ≤ 100)")
 
 # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
 reference = try
     integrate(make_reference(Float64), Gauss(8))
 catch e
-    @warn "reference integration failed; skipping solution-error and trajectory plots" error = sprint(showerror, e)
+    @warn "reference integration failed; skipping solution-error and trajectory plots" error = sprint(
+        showerror, e)
     nothing
 end
 
 if reference !== nothing
     plot_solution_error(runs, reference;
-        path  = joinpath(plotdir, "toda_lattice_solution_error_dt_$(Δt).png"),
+        path = joinpath(plotdir, "toda_lattice_solution_error_dt_$(Δt).png"),
         title = "Toda Lattice — Solution Error (Δt = 1, t ≤ 100, vs. Float64 Gauss(8) at Δt = 0.1)")
 
     plot_solution(runs; reference = reference,
-        path   = joinpath(plotdir, "toda_lattice_solution_dt_$(Δt).png"),
-        title  = "Toda Lattice — Phase-Space Trajectory (Δt = 1, t ≤ 100)",
+        path = joinpath(plotdir, "toda_lattice_solution_dt_$(Δt).png"),
+        title = "Toda Lattice — Phase-Space Trajectory (Δt = 1, t ≤ 100)",
         coords = coords, xlabel = "q₁", ylabel = "p₁")
 end

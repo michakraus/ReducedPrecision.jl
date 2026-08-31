@@ -34,18 +34,19 @@ for (t₁, label) in ((2000.0, "capped t≤2000"), (10_000.0, "full t≤10000"))
     sol = Solution(prob)
     t = timesteps(sol)                       # OffsetVector of Float16 times
     tv = Float64.(collect(t))
-    ncol = count(i -> tv[i] == tv[i-1], 2:length(tv))
-    firstcol = findfirst(i -> tv[i] == tv[i-1], 2:length(tv))
+    ncol = count(i -> tv[i] == tv[i - 1], 2:length(tv))
+    firstcol = findfirst(i -> tv[i] == tv[i - 1], 2:length(tv))
     @printf("    %-14s  n=%5d  distinct=%5d  collisions=%5d  first collision at t≈%s\n",
-        label, length(tv), length(unique(tv)), ncol,
-        firstcol === nothing ? "none" : string(tv[firstcol+1]))
+        label, length(tv), length(unique(tv)),
+        ncol,
+        firstcol === nothing ? "none" : string(tv[firstcol + 1]))
 end
 
 # --- 2. actual integrations: full (uncapped) vs capped Float16 horizon -------------------------
 # Default Hermite initial guess (the one that previously threw t₀==t₁). Implicit methods only.
-methods = [("Implicit Midpoint",      Gauss(1)),
-           ("Implicit Euler",         ImplicitEulerRK()),
-           ("Implicit Runge-Kutta 4", Gauss(2))]
+methods = [("Implicit Midpoint", Gauss(1)),
+    ("Implicit Euler", ImplicitEulerRK()),
+    ("Implicit Runge-Kutta 4", Gauss(2))]
 
 function try_run(t₁, mname, method)
     prob = ho_pode(Float16.(HO.q₀), Float16.(HO.p₀);

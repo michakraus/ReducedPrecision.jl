@@ -51,7 +51,7 @@ function capped_final_time(::Type{T}, t₁, Δt) where {T}
     full = tbeg:step:T(t₁)
     icut = length(full)
     for i in 2:length(full)
-        full[i] <= full[i-1] && (icut = i - 1; break)
+        full[i] <= full[i - 1] && (icut = i - 1; break)
     end
     # The solution rebuilds the grid as `tbeg:step:tend`; a `StepRangeLen` pins its endpoint, which
     # can re-collide with its predecessor even though the same value sits cleanly *inside* the
@@ -60,7 +60,7 @@ function capped_final_time(::Type{T}, t₁, Δt) where {T}
     # in question (at most a step or two back).
     for i in icut:-1:1
         g = tbeg:step:full[i]
-        (length(g) < 2 || g[end] > g[end-1]) && return Float64(full[i])
+        (length(g) < 2 || g[end] > g[end - 1]) && return Float64(full[i])
     end
     return Float64(tbeg)
 end
@@ -81,8 +81,8 @@ struct Run
     precision::DataType
     prob::Any
     sol::Any
-    error::Union{Nothing,String}
-    diverged::Union{Nothing,Int}
+    error::Union{Nothing, String}
+    diverged::Union{Nothing, Int}
 end
 
 """
@@ -165,11 +165,13 @@ every step via [`reset_local!`](@ref), which is what makes long horizons possibl
 precision. Pass `false` to advance it along the problem's own `T`-typed time grid, which saturates
 at low precision and is retained only to demonstrate that failure.
 """
-function integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing, initialguess = nothing, localclock = true, solveropts = (;))
+function integrate_bounded(problem, method; bound = 1e3, solver = DogLeg(),
+        linesearch = nothing, max_iterations = nothing,
+        initialguess = nothing, localclock = true, solveropts = (;))
     overrides = merge(
         solveropts,
-        linesearch     === nothing ? (;) : (; linesearch),
-        max_iterations === nothing ? (;) : (; max_iterations),
+        linesearch === nothing ? (;) : (; linesearch),
+        max_iterations === nothing ? (;) : (; max_iterations)
     )
     iguesskw = initialguess === nothing ? (;) : (; initialguess)
     integrator = if isimplicit(method) === true
@@ -234,7 +236,10 @@ on) and the method default elsewhere (where Midpoint would regress the multi-sta
 `solveropts` is resolved the same way — a `NamedTuple` of `SimpleSolvers.Options` keywords applied to
 every run, or a callable `T -> NamedTuple` resolved per precision. See [`integrate_bounded`](@ref).
 """
-function run_study(make_problem; methods = ALL_METHODS, precisions = PRECISIONS, bound = 1e3, solver = DogLeg(), linesearch = nothing, max_iterations = nothing, initialguess = nothing, localclock = true, solveropts = (;))
+function run_study(
+        make_problem; methods = ALL_METHODS, precisions = PRECISIONS, bound = 1e3,
+        solver = DogLeg(), linesearch = nothing, max_iterations = nothing,
+        initialguess = nothing, localclock = true, solveropts = (;))
     runs = Run[]
     for T in precisions
         prob = make_problem(T)
@@ -245,10 +250,12 @@ function run_study(make_problem; methods = ALL_METHODS, precisions = PRECISIONS,
             err = nothing
             diverged = nothing
             try
-                sol, diverged = integrate_bounded(prob, spec.method; bound, solver, linesearch, max_iterations, initialguess = iguess, localclock, solveropts = opts)
+                sol, diverged = integrate_bounded(
+                    prob, spec.method; bound, solver, linesearch, max_iterations,
+                    initialguess = iguess, localclock, solveropts = opts)
             catch e
                 err = sprint(showerror, e)
-                @warn "integration failed" method = spec.name precision = nameof(T)
+                @warn "integration failed" method=spec.name precision=nameof(T)
             end
             push!(runs, Run(spec, T, prob, sol, err, diverged))
         end
