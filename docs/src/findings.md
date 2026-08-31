@@ -29,15 +29,20 @@ Lotka–Volterra problems use a separate variational-integrator comparison, disc
 
   | | BFloat16 | Float16 | Float32 | Float64 |
   |:--|:--|:--|:--|:--|
-  | harmonic oscillator | `1.1e-2` | `8.9e-3` | `2.1e-6` | `5.4e-15` |
-  | pendulum | `2.5e-1` | `3.7e-2` | `6.2e-4` | `6.2e-4` |
+  | harmonic oscillator | `5.9e-2` | `7.9e-3` | `2.1e-6` | `1.3e-14` |
+  | pendulum | `3.6e-1` | `3.7e-2` | `6.3e-4` | `6.2e-4` |
+
+  (Reproduced by `scripts/experiments/findings_energy_floor.jl`. The half-precision and `Float64`
+  entries move with the nonlinear solver's arithmetic and so change between dependency releases;
+  the `Float32` oscillator entry and the pendulum's last two do not, for the reason given next.)
 
   The other problems show the same ordering.
-* **The floor is not always round-off.** On the pendulum the implicit midpoint rule reaches the *same*
-  `6.2e-4` at Float32 and Float64: there the error is set by the method's truncation error at
-  `Δt = 0.1`, not by the arithmetic, so extra precision buys nothing. The `SPRK Gauss(2)` rule, being
-  of higher order, does keep improving (`2.2e-5` → `2.7e-7`). Reading a precision study therefore
-  requires knowing which of the two floors a given curve is sitting on.
+* **The floor is not always round-off.** On the pendulum the implicit midpoint rule reaches
+  indistinguishable values at Float32 and Float64 (`6.3e-4` and `6.2e-4`): there the error is set by
+  the method's truncation error at `Δt = 0.1`, not by the arithmetic, so extra precision buys
+  nothing. The `SPRK Gauss(2)` rule, being of higher order, does keep improving
+  (`1.9e-5` → `2.7e-7`). Reading a precision study therefore requires knowing which of the two
+  floors a given curve is sitting on.
 * For the low-order methods the **solution error** is likewise often dominated by truncation rather
   than round-off, so Float32 and Float64 solution errors can be nearly identical while only the half
   precisions show a round-off floor.

@@ -40,8 +40,8 @@ A central goal of the implementation is **type purity**: every library in the st
   precision.
 * **Precision sets the error floor.** For the energy-conserving methods the size of the (bounded)
   energy error is set by the working precision — for the harmonic oscillator at `Δt = 0.1`, the
-  implicit midpoint rule settles at roughly `1e-2` (BFloat16), `9e-3` (Float16), `2e-6` (Float32) and
-  `5e-15` (Float64).
+  implicit midpoint rule settles at roughly `6e-2` (BFloat16), `8e-3` (Float16), `2e-6` (Float32) and
+  `1e-14` (Float64).
 * **Exponent range buys nothing; significand bits do.** `BFloat16` and `Float16` are both 16-bit, but
   `BFloat16` spends three of its significand bits on `Float32`'s exponent range. On these bounded
   Hamiltonian problems that range is never needed, so `BFloat16` is simply the coarser of the two —

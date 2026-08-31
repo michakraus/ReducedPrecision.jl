@@ -17,9 +17,10 @@ type-pure at all four precisions and run the full horizon.
 
 As for the harmonic oscillator, the symplectic methods keep the energy error bounded while explicit
 Euler grows and implicit Euler dissipates. The two orders separate instructively here. **Implicit
-midpoint** sits at ≈ `2e-1` / `4e-2` / `6e-4` / `6e-4` for BFloat16 / Float16 / Float32 / Float64 —
-the last two are *equal*, because at `Δt = 0.1` this second-order rule is already truncation-limited
-on the nonlinear pendulum, so precision beyond Float32 buys it nothing. **Implicit RK4**, being
+midpoint** sits at ≈ `4e-1` / `4e-2` / `6e-4` / `6e-4` for BFloat16 / Float16 / Float32 / Float64 —
+the last two are *indistinguishable*, because at `Δt = 0.1` this second-order rule is already
+truncation-limited on the nonlinear pendulum, so precision beyond Float32 buys it nothing.
+**Implicit RK4**, being
 fourth-order, is still round-off-limited at those precisions and keeps improving (≈ `2e-5` at Float32,
 `3e-7` at Float64). Which of the two floors a curve is sitting on — arithmetic or truncation — is
 therefore method-dependent, and reading a precision study requires knowing which. The four
@@ -63,8 +64,9 @@ Both half precisions carry the full `t ≤ 10 000` horizon here, far past where 
 advancing (`t ≈ 2048` in Float16, `t ≈ 256` in BFloat16), which on its own would make the implicit
 methods fail outright — see [Time stepping in a local frame](@ref) and [Initial guess](@ref). This scenario also
 holds the *only* remaining failure among the four Hamiltonian problems: `Implicit Euler` at `Float16`
-throws a `NaN` in the Newton direction. A first-order dissipative method at `Δt = 1` is the least
-promising combination in the study, so it is a fitting place for the last one to sit.
+throws `NonlinearSolverException`, "non-finite direction₁ vector". A first-order dissipative method
+at `Δt = 1` is the least promising combination in the study, so it is a fitting place for the last
+one to sit.
 
 ### Solution error
 

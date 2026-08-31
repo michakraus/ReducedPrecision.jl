@@ -8,6 +8,89 @@ Categories: **Added**; **Changed**; **Removed**; **Bug fixes** = code defects; *
 results the experiments establish, where a change moved or superseded one; **Documentation**;
 **Tests**; **Repository hygiene**.
 
+## [Unreleased] — targeting 0.3.0
+
+Update to GeometricIntegrators 0.18.4, GeometricIntegratorsBase 0.6.4, RungeKutta 0.6.1 and
+SimpleSolvers 0.13.2 (CompactBasisFunctions 0.3.1 and QuadratureRules 0.2.1 indirect;
+GenericLinearAlgebra, FastTransforms, FFTW, DSP and MKL leave the dependency graph with them).
+**No source change was needed**, but the energy-error floors move, so the figures the documentation
+quotes are re-measured under **Findings** below.
+
+### Changed
+- **Dependency bounds**: `GeometricIntegrators` `0.17` → `0.18`, `GeometricIntegratorsBase` `0.5.1`
+  → `0.6.3`, `RungeKutta` `0.5` → `0.6`, `SimpleSolvers` `0.10` → `0.12.1, 0.13`.
+
+  The `SimpleSolvers` entry is a *range* rather than `0.13`, matching what GeometricIntegrators and
+  GeometricIntegratorsBase declare: SimpleSolvers 0.13.1 raises its own Julia floor to 1.11, so on
+  the 1.10 LTS the resolver has to fall back to 0.12.2. Pinning `0.13` alone would make this package
+  uninstallable on the LTS, which is why `julia = "1.10"` is unchanged.
+- **`SymplecticEulerA`, `SymplecticEulerB` and the Lotka–Volterra `ImplicitMidpoint` now name
+  GeometricIntegratorsBase's methods unambiguously.** GeometricIntegrators 0.18.0 renamed its own
+  four Runge–Kutta types to `SymplecticEulerARK`, `SymplecticEulerBRK`, `ImplicitMidpointRK` and
+  `CrankNicolsonRK` precisely because both packages exported the unsuffixed names, and
+  GeometricIntegrators reexports GeometricIntegratorsBase. The three bare names in `src/methods.jl`
+  are unchanged and now resolve to one binding each.
+- **The whole stack again precompiles on Julia 1.13.** RungeKutta 0.5.23 pulled in
+  GenericLinearAlgebra 0.4.0, whose `LinearAlgebra.eigencopy_oftype` method for `UpperHessenberg`
+  overwrites the one Julia 1.13 added to LinearAlgebra itself — a hard error during precompilation.
+  RungeKutta 0.6 drops that dependency, having moved its quadrature to QuadratureRules. This is also
+  why the pre-bump numbers below could not be re-measured on this machine for an A/B: the old
+  dependency set does not load on the Julia available here.
+
+### Findings
+- **The half-precision and `Float64` energy-error floors move; the truncation-limited ones do not.**
+  Mean relative energy error over the second half of the `Δt = 0.1`, `t ≤ 1000` run, before → after:
+
+  | method / problem | BFloat16 | Float16 | Float32 | Float64 |
+  |:--|:--|:--|:--|:--|
+  | implicit midpoint, harmonic oscillator | `1.1e-2` → **`5.9e-2`** | `8.9e-3` → **`7.9e-3`** | `2.1e-6` → `2.1e-6` | `5.4e-15` → **`1.3e-14`** |
+  | implicit midpoint, pendulum | `2.5e-1` → **`3.6e-1`** | `3.7e-2` → `3.7e-2` | `6.2e-4` → `6.3e-4` | `6.2e-4` → `6.2e-4` |
+  | `SPRK Gauss(2)`, pendulum | — | — | `2.2e-5` → **`1.9e-5`** | `2.7e-7` → `2.7e-7` |
+
+  The largest movement is a factor 5.4, on the coarsest format. The two figures that do *not* move at
+  all are the pendulum's implicit-midpoint `Float32`/`Float64` pair and that rule's `Float64` value —
+  exactly the ones the study identifies as truncation- rather than round-off-limited. `Float32`
+  values move in the second significant digit at most. So the bump does not disturb any conclusion;
+  it shifts the numbers that were always a property of the arithmetic.
+
+  **The cause is the nonlinear solve, not the tableaux.** `Gauss(1)`'s coefficients are ½, 1, ½,
+  exact in binary, so RungeKutta 0.6's more accurate quadrature cannot move them. What moved is
+  SimpleSolvers: 0.13 makes `LapackLU` the default linear solver, and its `getrf` pivot order differs
+  from the old scalar `LU`; 0.11 and 0.12 changed when a solve stops, through the
+  `f_stall_window = 50` criterion GeometricIntegratorsBase 0.6 sets and the `all(isfinite, …)`
+  direction test that replaces the bare `isnan` one.
+
+  Re-measured with `scripts/experiments/findings_energy_floor.jl` (added, see below). The "before"
+  column is the figure the documentation carried, not a re-run: the pre-bump dependency set does not
+  load on this machine's Julia, so this is not an A/B of one variable.
+- **The failure set is unchanged.** All 12 experiment scripts complete, and precision purity passes
+  for every successful run. The per-run failures are the documented ones and only those: the
+  degenerate-Lagrangian half precisions on the two Lotka–Volterra problems (`Implicit Midpoint`,
+  `VPRK Gauss(1)`, `PMVI Midpoint` and `CMDVI`), plus `Implicit Euler` at `Float16` on the coarse-step
+  pendulum, still the only failure among the four Hamiltonian problems.
+
+### Added
+- **`scripts/experiments/findings_energy_floor.jl`**, which reproduces the energy-error floors
+  quoted in `docs/src/findings.md` — implicit midpoint and the two fourth-order Gauss(2) variants, on
+  the harmonic oscillator and the pendulum, at all four precisions, as the mean relative energy
+  error over the second half of the `Δt = 0.1`, `t ≤ 1000` run. It exists so that the next
+  dependency bump can tell a moved figure from a stale one in one command rather than by re-running
+  the full sweep and reading figures.
+
+### Documentation
+- The re-measured floors are carried into `docs/src/findings.md`, `docs/src/index.md`,
+  `docs/src/harmonic_oscillator.md` and `docs/src/pendulum.md`. The findings table now says which of
+  its entries are expected to move with a dependency release and which are not, and names the script
+  that reproduces it.
+- **`Implicit Euler` at `Float16` on the coarse pendulum now fails with a different message.**
+  `docs/src/pendulum.md` said it "throws a `NaN` in the Newton direction"; it throws
+  `NonlinearSolverException`, *"non-finite direction₁ vector"*. SimpleSolvers 0.11 widened that guard
+  from `isnan` to `all(isfinite, …)`, so an overflowed direction is now caught as well as a NaN one.
+  Same failure, at the same place, reported more precisely.
+
+### Tests
+- The suite passes unedited: 296 of 296, with `--check-bounds=auto`.
+
 ## [0.2.0] — 2026-08-08
 
 Update to GeometricIntegrators 0.17, GeometricIntegratorsBase 0.5.1, SimpleSolvers 0.10.1 and
@@ -282,3 +365,27 @@ problems, a Documenter site, and CI.
 - `scripts/experiments/` holds two one-off investigations kept for reference:
   `iguess_extrapolation.jl` (Hermite versus Midpoint initial guess) and `verify_reset_fix.jl`
   (local-frame versus global-clock stepping).
+
+## Open Issues
+
+- **Not every quoted figure has been re-measured since the 0.18 / 0.13 dependency bump.**
+  `scripts/experiments/findings_energy_floor.jl` covers the harmonic oscillator and the pendulum. The
+  energy- and solution-error levels quoted in `docs/src/double_pendulum.md`,
+  `docs/src/toda_lattice.md`, the two Lotka–Volterra pages, and the solution-error levels on
+  `docs/src/harmonic_oscillator.md` were not: the sweep re-runs and the figures regenerate, but those
+  numbers are carried over. They are stated to one significant figure, and the movement measured on
+  the two problems that *were* re-measured would leave most of them standing — but that is an
+  argument, not a measurement. Extending the script to the remaining problems is the fix.
+- The `1.4e-12` agreement and the `2.6–40×` speed-ups in `docs/src/findings.md` are **historical A/B
+  figures**: they compare a fixed solver tolerance against a precision-scaled one, and the unscaled
+  variant no longer exists in the stack. They are unaffected by a dependency bump and were not
+  re-run.
+- **A pre-bump baseline cannot be reproduced on this machine.** RungeKutta 0.5.23 pulls in
+  GenericLinearAlgebra 0.4.0, which does not precompile on Julia 1.13, and setting up an older Julia
+  to work around it was blocked here. Any A/B against a state before this bump needs a machine with
+  Julia 1.11 or 1.12 available.
+- A sweep emits some 3800 warnings, dominated by `DogLeg trust-region radius Δ underflowed` and
+  Hermite extrapolation's `history[1] and history[2] are identical` — both pre-existing upstream
+  messages, present in SimpleSolvers 0.10.1 and GeometricIntegratorsBase 0.5.3 as well. They are not
+  suppressed, because `verbosity = 0` would also hide the genuine non-convergence reports the study
+  reads; separating the two is open work.

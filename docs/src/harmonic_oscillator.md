@@ -20,7 +20,7 @@ The qualitative picture is textbook: **explicit Euler** grows without bound, **i
 dissipates towards a constant relative error of order one, and the **symplectic Euler** methods keep
 a *bounded, oscillating* energy error. Among the midpoint / fourth-order group, the two implicit
 (Gauss) rules nearly conserve energy, with their noise floor set by the precision — implicit midpoint
-sits at ≈ `1e-2` for BFloat16, `9e-3` for Float16, `2e-6` for Float32 and `5e-15` for Float64 — while
+sits at ≈ `6e-2` for BFloat16, `8e-3` for Float16, `2e-6` for Float32 and `1e-14` for Float64 — while
 their explicit counterparts drift. Because that group is a 2 × 2 (explicit vs. implicit at order 2 and
 at order 4), the two effects are separable in one figure: moving from explicit to implicit changes the
 *qualitative* behaviour from drift to bounded, while raising the order lowers the floor within each.
