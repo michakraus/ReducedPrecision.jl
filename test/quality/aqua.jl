@@ -5,7 +5,7 @@ using Test
 @testset "Aqua" begin
     Aqua.test_all(ReducedPrecision;
         stale_deps = false,
-        piracies = (broken = true,))  # issue: not filed yet — BFloat16 shims and initial_guess!
+        piracies = (broken = true,))  # issue #25
     # GeometricProblems is in [deps] but src/ loads it nowhere
-    @test_broken isempty(Aqua.find_stale_deps(Base.PkgId(ReducedPrecision)))  # issue: not filed yet
+    @test_broken isempty(Aqua.find_stale_deps(Base.PkgId(ReducedPrecision)))  # issue #26
 end
