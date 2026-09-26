@@ -100,7 +100,7 @@ end
     for r in runs)
 
     # The partitioned RK methods take their initial guess from the tableau (see
-    # `initial_guess.jl`), so no clock value enters it: their results must be *identical* whether
+    # `src/initial_guess.jl`), so no clock value enters it: their results must be *identical* whether
     # the step clock is re-anchored each step or walked along the problem's saturating grid.
     old = run_study(make_long; precisions = (BFloat16,), localclock = false)
     for name in ("Implicit Midpoint", "Implicit Runge-Kutta 4", "Implicit Euler", "PRK Gauss(2)")
