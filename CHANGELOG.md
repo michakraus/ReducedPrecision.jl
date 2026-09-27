@@ -24,6 +24,19 @@ quotes are re-measured under **Findings** below.
   GeometricIntegratorsBase declare: SimpleSolvers 0.13.1 raises its own Julia floor to 1.11, so on
   the 1.10 LTS the resolver has to fall back to 0.12.2. Pinning `0.13` alone would make this package
   uninstallable on the LTS, which is why `julia = "1.10"` is unchanged.
+- **Four lower bounds are raised to versions that can install.** On Julia 1.10, with each other
+  entry as written, the old floors do not resolve:
+
+  | entry | was | is | why the old floor fails |
+  |:--|:--|:--|:--|
+  | `GeometricBase` | `0.14` | `0.14.8` | `RungeKutta` 0.6 needs `GeometricBase` 0.14.8 or later |
+  | `GeometricIntegrators` | `0.18` | `0.18.2` | 0.18.0 needs `SimpleSolvers` 0.10, which this package does not admit |
+  | `GeometricSolutions` | `0.6.4` | `0.6.5` | no `GeometricProblems` 0.8–0.9 admits 0.6.4 |
+  | `NaNMath` | `1` | `1.1.2` | `Symbolics`, which `GeometricProblems` reaches through `EulerLagrange`, does not admit 1.0.0 |
+
+  All eleven floors together resolve on 1.10.12. Nothing any user installs changes: the resolver
+  never chose these versions, because it could not. The `Downgrade` job in `CI.yml`, new with this
+  change, runs the suite at exactly these floors and keeps them honest.
 - **`SymplecticEulerA`, `SymplecticEulerB` and the Lotka–Volterra `ImplicitMidpoint` now name
   GeometricIntegratorsBase's methods unambiguously.** GeometricIntegrators 0.18.0 renamed its own
   four Runge–Kutta types to `SymplecticEulerARK`, `SymplecticEulerBRK`, `ImplicitMidpointRK` and
