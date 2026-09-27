@@ -30,13 +30,13 @@ quotes are re-measured under **Findings** below.
   | entry | was | is | why the old floor fails |
   |:--|:--|:--|:--|
   | `GeometricBase` | `0.14` | `0.14.8` | `RungeKutta` 0.6 needs `GeometricBase` 0.14.8 or later |
-  | `GeometricIntegrators` | `0.18` | `0.18.2` | 0.18.0 needs `SimpleSolvers` 0.10, which this package does not admit |
+  | `GeometricIntegrators` | `0.18` | `0.18.2` | 0.18.0 needs `SimpleSolvers` 0.10 and 0.18.1 needs 0.11.0, neither of which this package admits |
   | `GeometricSolutions` | `0.6.4` | `0.6.5` | no `GeometricProblems` 0.8–0.9 admits 0.6.4 |
-  | `NaNMath` | `1` | `1.1.2` | `Symbolics`, which `GeometricProblems` reaches through `EulerLagrange`, does not admit 1.0.0 |
+  | `NaNMath` | `1` | `1.1.2` | `SymbolicUtils` 4, which `Symbolics` 7 needs (through `GeometricProblems` and `EulerLagrange`), admits `NaNMath` only from 1.1.2 |
 
   All eleven floors together resolve on 1.10.12. Nothing any user installs changes: the resolver
-  never chose these versions, because it could not. The `Downgrade` job in `CI.yml`, new with this
-  change, runs the suite at exactly these floors and keeps them honest.
+  never chose these versions, because it could not. The advisory `Downgrade` job in `CI.yml`, new
+  with this change, runs the suite at exactly these floors.
 - **`SymplecticEulerA`, `SymplecticEulerB` and the Lotka–Volterra `ImplicitMidpoint` now name
   GeometricIntegratorsBase's methods unambiguously.** GeometricIntegrators 0.18.0 renamed its own
   four Runge–Kutta types to `SymplecticEulerARK`, `SymplecticEulerBRK`, `ImplicitMidpointRK` and
