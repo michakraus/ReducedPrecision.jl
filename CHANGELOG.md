@@ -90,6 +90,16 @@ quotes are re-measured under **Findings** below.
 
 ### Tests
 - The suite passes unedited: 296 of 296, with `--check-bounds=auto`.
+- **The suite follows the shared test layout.** The testsets of the single `test/runtests.jl` move,
+  unchanged, into one file per source file (`bfloat16_compat.jl`, `methods.jl`, `initial_guess.jl`,
+  `study.jl`, `diagnostics.jl`, `plotting.jl`), with the shared problem in `test/helpers/`.
+  `runtests.jl` runs them as `@safetestset`s in the `core` group. The test dependencies move from
+  `[extras]`/`[targets]` into `test/Project.toml`. The 296 tests stay 296.
+- **Aqua runs, in `test/quality/aqua.jl`.** Two of its checks fail and are marked broken: the type
+  piracy of the BFloat16 shims and of `initial_guess!`, and `GeometricProblems` as a stale
+  dependency of the package. The `persistent_tasks` check is off: on Julia 1.10 the package
+  cannot precompile, because `BFloat16(::Integer)` in `src/bfloat16_compat.jl` overwrites the
+  method of BFloat16s.
 
 ## [0.2.0] — 2026-08-08
 
