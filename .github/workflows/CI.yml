@@ -113,9 +113,11 @@ jobs:
         # The `[compat]` lower bounds. `min` tests the lowest Julia with the newest dependencies,
         # which leaves every dependency floor untested: a floor can name a version that cannot be
         # installed at all, or that conflicts with a sibling's floor, and nothing notices. This job
-        # resolves every direct dependency to exactly its lower bound on the lowest Julia, and
-        # `forcedeps` fails, naming the entry, when one cannot sit at its bound. Then it runs the
-        # suite there, so a floor that installs but lacks something the package calls fails too.
+        # resolves every direct dependency of the root Project.toml to exactly its lower bound on
+        # the lowest Julia, and `forcedeps` fails, naming the entry, when one cannot sit at its
+        # bound. Then it runs the suite there, so a floor that installs but lacks something the
+        # package calls fails too. `projects` is left at `.`, so the floors in test/Project.toml
+        # and the test-only dependencies are not floor-tested.
         #
         # The stdlibs are skipped because their version is fixed by the Julia version. The list is
         # every stdlib a repository here depends on, and the common rest; add one when a

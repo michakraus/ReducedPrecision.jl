@@ -32,11 +32,27 @@ quotes are re-measured under **Findings** below.
   | `GeometricBase` | `0.14` | `0.14.8` | `RungeKutta` 0.6 needs `GeometricBase` 0.14.8 or later |
   | `GeometricIntegrators` | `0.18` | `0.18.2` | 0.18.0 needs `SimpleSolvers` 0.10 and 0.18.1 needs 0.11.0, neither of which this package admits |
   | `GeometricSolutions` | `0.6.4` | `0.6.5` | no `GeometricProblems` 0.8–0.9 admits 0.6.4 |
-  | `NaNMath` | `1` | `1.1.2` | `SymbolicUtils` 4, which `Symbolics` 7 needs (through `GeometricProblems` and `EulerLagrange`), admits `NaNMath` only from 1.1.2 |
+  | `NaNMath` | `1` | `1.1.4` | see below |
 
   All eleven floors together resolve on 1.10.12. Nothing any user installs changes: the resolver
   never chose these versions, because it could not. The advisory `Downgrade` job in `CI.yml`, new
   with this change, runs the suite at exactly these floors.
+
+  `NaNMath` 1.1.2 is the lowest version that resolves, because `SymbolicUtils` 4, which
+  `Symbolics` 7 needs (through `GeometricProblems` and `EulerLagrange`), admits nothing older. But
+  the BFloat16 shims fail on it, and on 1.1.3: the `Downgrade` job's first run failed
+  `test/bfloat16_compat.jl`. Measured on Julia 1.10.12 with the shims alone, against each
+  `BFloat16s` and `NaNMath` pair:
+
+  | `NaNMath` | `NaNMath.acosh(2.0f0)` | `NaNMath.pow(BFloat16(-2), BFloat16(0.5))` |
+  |:--|:--|:--|
+  | 1.1.2 | `NaN` | `StackOverflowError` |
+  | 1.1.3 | correct | `StackOverflowError` |
+  | 1.1.4 | correct | `NaN`, as tested |
+
+  1.1.2 and 1.1.3 define `pow(x::T, y::T) = pow(float(x), float(y))`, which calls itself when
+  `float(x) === x`, as it is for `BFloat16`. `BFloat16s` 0.5.0 and 0.6.2 give the same results,
+  so its floor stays.
 - **`SymplecticEulerA`, `SymplecticEulerB` and the Lotka–Volterra `ImplicitMidpoint` now name
   GeometricIntegratorsBase's methods unambiguously.** GeometricIntegrators 0.18.0 renamed its own
   four Runge–Kutta types to `SymplecticEulerARK`, `SymplecticEulerBRK`, `ImplicitMidpointRK` and
