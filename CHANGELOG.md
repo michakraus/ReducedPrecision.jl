@@ -24,6 +24,39 @@ quotes are re-measured under **Findings** below.
   GeometricIntegratorsBase declare: SimpleSolvers 0.13.1 raises its own Julia floor to 1.11, so on
   the 1.10 LTS the resolver has to fall back to 0.12.2. Pinning `0.13` alone would make this package
   uninstallable on the LTS, which is why `julia = "1.10"` is unchanged.
+- **Five lower bounds are raised.** On Julia 1.10, with each other entry as written, four old
+  floors do not resolve, and two admit a version on which the suite fails:
+
+  | entry | was | is | why the old floor fails |
+  |:--|:--|:--|:--|
+  | `BFloat16s` | `0.5` | `0.5.1` | 0.5.0 has no `BFloat16(::BigFloat)`, and `RungeKutta` builds every tableau in `BigFloat`, so every `BFloat16` integration throws a `MethodError` |
+  | `GeometricBase` | `0.14` | `0.14.8` | `RungeKutta` 0.6 needs `GeometricBase` 0.14.8 or later |
+  | `GeometricIntegrators` | `0.18` | `0.18.2` | 0.18.0 needs `SimpleSolvers` 0.10 and 0.18.1 needs 0.11.0, neither of which this package admits |
+  | `GeometricSolutions` | `0.6.4` | `0.6.5` | no `GeometricProblems` 0.8–0.9 admits 0.6.4 |
+  | `NaNMath` | `1` | `1.1.4` | see below |
+
+  All eleven floors together resolve on 1.10.12. Nothing any user installs changes: the resolver
+  never chose these versions, because it could not. The advisory `Downgrade` job in `CI.yml`, new
+  with this change, runs the suite at exactly these floors.
+
+  `NaNMath` 1.1.2 is the lowest version that resolves, because `SymbolicUtils` 4, which
+  `Symbolics` 7 needs (through `GeometricProblems` and `EulerLagrange`), admits nothing older. But
+  the BFloat16 shims fail on it, and on 1.1.3: the `Downgrade` job's first run failed
+  `test/bfloat16_compat.jl`. Measured on Julia 1.10.12 with the shims alone, against each
+  `BFloat16s` and `NaNMath` pair:
+
+  | `NaNMath` | `NaNMath.acosh(2.0f0)` | `NaNMath.pow(BFloat16(-2), BFloat16(0.5))` |
+  |:--|:--|:--|
+  | 1.1.2 | `NaN` | `StackOverflowError` |
+  | 1.1.3 | correct | `StackOverflowError` |
+  | 1.1.4 | correct | `NaN`, as tested |
+
+  1.1.2 and 1.1.3 define `pow(x::T, y::T) = pow(float(x), float(y))`, which calls itself when
+  `float(x) === x`, as it is for `BFloat16`. `BFloat16s` 0.5.0 and 0.6.2 give the same results
+  there. The `BFloat16s` floor shows only once a tableau is built: on Julia 1.10.12 with every other
+  entry at its floor, a `BFloat16` Explicit Euler run of the harmonic oscillator throws
+  `MethodError: no method matching BFloat16(::BigFloat)` at 0.5.0 and succeeds at 0.5.1 and 0.6.0.
+  Raising `RungeKutta` or any other dependency instead does not clear it.
 - **`SymplecticEulerA`, `SymplecticEulerB` and the Lotka–Volterra `ImplicitMidpoint` now name
   GeometricIntegratorsBase's methods unambiguously.** GeometricIntegrators 0.18.0 renamed its own
   four Runge–Kutta types to `SymplecticEulerARK`, `SymplecticEulerBRK`, `ImplicitMidpointRK` and
