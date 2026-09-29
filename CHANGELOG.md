@@ -133,6 +133,11 @@ quotes are re-measured under **Findings** below.
   dependency of the package. The `persistent_tasks` check is off: on Julia 1.10 the package
   cannot precompile, because `BFloat16(::Integer)` in `src/bfloat16_compat.jl` overwrites the
   method of BFloat16s.
+- **`test/Project.toml` no longer bounds the package's own dependencies.** Its `[compat]` entries
+  for `GeometricBase`, `GeometricIntegrators`, `GeometricIntegratorsBase`, `GeometricProblems`,
+  `NaNMath` and `SimpleSolvers` are removed, so the tests resolve against the root `Project.toml`'s
+  bounds only. The old `SimpleSolvers = "0.12.1, 0.13"` hid that the root also admits 0.14; the
+  suite now runs on what the package claims. Test-only bounds (`Aqua`, `SafeTestsets`) stay.
 
 ## [0.2.0] — 2026-08-08
 
