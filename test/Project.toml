@@ -15,10 +15,4 @@ ReducedPrecision = {path = ".."}
 
 [compat]
 Aqua = "0.8.18"
-GeometricBase = "0.14"
-GeometricIntegrators = "0.18"
-GeometricIntegratorsBase = "0.6.3"
-GeometricProblems = "0.8, 0.9"
-NaNMath = "1"
 SafeTestsets = "0.1.0"
-SimpleSolvers = "0.12.1, 0.13"
