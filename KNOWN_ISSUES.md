@@ -83,7 +83,17 @@ fix merges, and the CHANGELOG entry of the fix names its ID.
   Julia 1.10, and on aarch64 below LLVM 19, which is Julia 1.11 (LLVM 16) and 1.12 (LLVM 18). On
   x86_64 from Julia 1.11, and on aarch64 from Julia 1.13 (LLVM 20), BFloat16s does not define it,
   and nothing is overwritten. The package still loads, and the suite passes.
-  `test/quality/aqua.jl:8` keeps `persistent_tasks = false`. The `[Unreleased]` entry of
-  `CHANGELOG.md` that turns the check off names Julia 1.10 only.
+  `test/quality/aqua.jl:8` keeps `persistent_tasks = false`.
 - **kind:** found late
+- **found:** 2026-10-08
+
+### K9 · The **Findings** energy-error figures are not measured at the 0.3.0 floors.
+
+- **location:** `scripts/experiments/findings_energy_floor.jl`
+- **evidence:** The `[Unreleased]` figures in `CHANGELOG.md` and `docs/src/findings.md` were measured
+  on GeometricIntegrators 0.18.4, GeometricIntegratorsBase 0.6.4, RungeKutta 0.6.1 and
+  SimpleSolvers 0.13.2. The `[compat]` floors are now 0.18.6, 0.6.9, 0.6.4 and 0.14.1, which exclude
+  all four. A run of `scripts/experiments/findings_energy_floor.jl` in an environment resolved at
+  the new floors answers it.
+- **kind:** not verified
 - **found:** 2026-10-08

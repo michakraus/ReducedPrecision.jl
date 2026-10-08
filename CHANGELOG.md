@@ -14,7 +14,9 @@ Update to GeometricIntegrators 0.18.4, GeometricIntegratorsBase 0.6.4, RungeKutt
 SimpleSolvers 0.13.2 (CompactBasisFunctions 0.3.1 and QuadratureRules 0.2.1 indirect;
 GenericLinearAlgebra, FastTransforms, FFTW, DSP and MKL leave the dependency graph with them).
 **No source change was needed**, but the energy-error floors move, so the figures the documentation
-quotes are re-measured under **Findings** below.
+quotes are re-measured under **Findings** below, on these versions. The floor raise under
+**Changed** excludes all four, and the figures are not re-measured at the new floors
+(`KNOWN_ISSUES.md` K9).
 
 ### Changed
 - **The floors rise** to Julia 1.11, GeometricBase 0.15.0, GeometricEquations 0.21.5,
@@ -24,9 +26,10 @@ quotes are re-measured under **Findings** below.
 - **CI coverage and cache**: CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of
   `Julia min`, and a test job saves the Julia cache only when it succeeds.
 - **Dependency bounds**: `GeometricIntegrators` `0.17` → `0.18`, `GeometricIntegratorsBase` `0.5.1`
-  → `0.6.3`, `RungeKutta` `0.5` → `0.6`, `SimpleSolvers` `0.10` → `0.12.1, 0.13`.
+  → `0.6.3`, `RungeKutta` `0.5` → `0.6`, `SimpleSolvers` `0.10` → `0.12.1, 0.13`. The floor raise
+  above replaces each of these four bounds.
 
-  The `SimpleSolvers` entry is a *range* rather than `0.13`, matching what GeometricIntegrators and
+  The `SimpleSolvers` entry was a *range* rather than `0.13`, matching what GeometricIntegrators and
   GeometricIntegratorsBase declare: SimpleSolvers 0.13.1 raises its own Julia floor to 1.11, so on
   the 1.10 LTS the resolver has to fall back to 0.12.2. Pinning `0.13` alone would have made this
   package uninstallable on the LTS, while the floor was Julia 1.10.
@@ -44,7 +47,8 @@ quotes are re-measured under **Findings** below.
   All eleven floors together resolved on 1.10.12, while the floor was Julia 1.10. Nothing any user
   installs changes: the resolver never chose these versions, because it could not. The advisory
   `Downgrade` job in `CI.yml`, new with this change, runs the suite at the `[compat]` floors on the
-  lowest Julia.
+  lowest Julia. The floor raise above replaces the `GeometricBase`, `GeometricIntegrators` and
+  `GeometricSolutions` rows; the `BFloat16s` and `NaNMath` rows stand.
 
   `NaNMath` 1.1.2 is the lowest version that resolves, because `SymbolicUtils` 4, which
   `Symbolics` 7 needs (through `GeometricProblems` and `EulerLagrange`), admits nothing older. But
@@ -137,8 +141,8 @@ quotes are re-measured under **Findings** below.
   `[extras]`/`[targets]` into `test/Project.toml`. The 296 tests stay 296.
 - **Aqua runs, in `test/quality/aqua.jl`.** Two of its checks fail and are marked broken: the type
   piracy of the BFloat16 shims and of `initial_guess!`, and `GeometricProblems` as a stale
-  dependency of the package. The `persistent_tasks` check is off: on Julia 1.10 the package
-  cannot precompile, because `BFloat16(::Integer)` in `src/bfloat16_compat.jl` overwrites the
+  dependency of the package. The `persistent_tasks` check is off: on Julia 1.10, and on aarch64
+  with Julia 1.11 and 1.12, the package cannot precompile, because `BFloat16(::Integer)` in `src/bfloat16_compat.jl` overwrites the
   method of BFloat16s.
 - **`test/Project.toml` no longer bounds the package's own dependencies.** Its `[compat]` entries
   for `GeometricBase`, `GeometricIntegrators`, `GeometricIntegratorsBase`, `GeometricProblems`,
