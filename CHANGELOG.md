@@ -17,6 +17,8 @@ GenericLinearAlgebra, FastTransforms, FFTW, DSP and MKL leave the dependency gra
 quotes are re-measured under **Findings** below.
 
 ### Changed
+- **CI coverage and cache**: CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of
+  `Julia min`, and a test job saves the Julia cache only when it succeeds.
 - **Dependency bounds**: `GeometricIntegrators` `0.17` → `0.18`, `GeometricIntegratorsBase` `0.5.1`
   → `0.6.3`, `RungeKutta` `0.5` → `0.6`, `SimpleSolvers` `0.10` → `0.12.1, 0.13`.
 
