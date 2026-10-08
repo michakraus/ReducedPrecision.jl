@@ -142,8 +142,8 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
 - **Aqua runs, in `test/quality/aqua.jl`.** Two of its checks fail and are marked broken: the type
   piracy of the BFloat16 shims and of `initial_guess!`, and `GeometricProblems` as a stale
   dependency of the package. The `persistent_tasks` check is off: on Julia 1.10, and on aarch64
-  with Julia 1.11 and 1.12, the package cannot precompile, because `BFloat16(::Integer)` in `src/bfloat16_compat.jl` overwrites the
-  method of BFloat16s.
+  with Julia 1.11 and 1.12, the package cannot precompile, because `BFloat16(::Integer)` in
+  `src/bfloat16_compat.jl` overwrites the method of BFloat16s.
 - **`test/Project.toml` no longer bounds the package's own dependencies.** Its `[compat]` entries
   for `GeometricBase`, `GeometricIntegrators`, `GeometricIntegratorsBase`, `GeometricProblems`,
   `NaNMath` and `SimpleSolvers` are removed, so the tests resolve against the root `Project.toml`'s

@@ -92,8 +92,8 @@ fix merges, and the CHANGELOG entry of the fix names its ID.
 - **location:** `scripts/experiments/findings_energy_floor.jl`
 - **evidence:** The `[Unreleased]` figures in `CHANGELOG.md` and `docs/src/findings.md` were measured
   on GeometricIntegrators 0.18.4, GeometricIntegratorsBase 0.6.4, RungeKutta 0.6.1 and
-  SimpleSolvers 0.13.2. The `[compat]` floors are now 0.18.6, 0.6.9, 0.6.4 and 0.14.1, which exclude
+  SimpleSolvers 0.13.2. The `[compat]` floors are 0.18.6, 0.6.9, 0.6.4 and 0.14.1, which exclude
   all four. A run of `scripts/experiments/findings_energy_floor.jl` in an environment resolved at
-  the new floors answers it.
+  these floors answers it.
 - **kind:** not verified
 - **found:** 2026-10-08
