@@ -19,10 +19,10 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
 (`KNOWN_ISSUES.md` K9).
 
 ### Changed
-- **The floors rise** to Julia 1.12, GeometricBase 0.15.0, GeometricEquations 0.21.5,
-  GeometricIntegrators 0.18.6, GeometricIntegratorsBase 0.6.9, GeometricProblems 0.9.1,
-  GeometricSolutions 0.6.6, RungeKutta 0.6.4 and SimpleSolvers 0.14.1, because GeometricBase 0.15
-  declares its stubs public and requires Julia 1.11. The Julia floor is 1.12, not 1.11, because on
+- **The floors rise** to GeometricBase 0.15.0, which declares its stubs public, and with it to
+  GeometricEquations 0.21.5, GeometricIntegrators 0.18.6, GeometricIntegratorsBase 0.6.9,
+  GeometricProblems 0.9.1, GeometricSolutions 0.6.6, RungeKutta 0.6.4, SimpleSolvers 0.14.1 and
+  Julia 1.12. The Julia floor is 1.12, not the 1.11 that GeometricBase 0.15 requires, because on
   Julia 1.11 LLVM 16 on x86_64 aborts on the vectorised Float32-to-BFloat16 conversion
   (`Cannot select … v16bf16 = X86ISD::VFPROUND`).
 - **CI coverage and cache**: CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of
