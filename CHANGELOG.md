@@ -17,6 +17,12 @@ GenericLinearAlgebra, FastTransforms, FFTW, DSP and MKL leave the dependency gra
 quotes are re-measured under **Findings** below.
 
 ### Changed
+- **The floors rise** to Julia 1.11, GeometricBase 0.15.0, GeometricEquations 0.21.5,
+  GeometricIntegrators 0.18.6, GeometricIntegratorsBase 0.6.9, GeometricProblems 0.9.1,
+  GeometricSolutions 0.6.6, RungeKutta 0.6.4 and SimpleSolvers 0.14.1, because GeometricBase 0.15
+  declares its stubs public and requires Julia 1.11. These replace the `julia`, `GeometricBase`,
+  `GeometricIntegrators`, `GeometricSolutions` and `SimpleSolvers` bounds of the two entries below;
+  the `BFloat16s` and `NaNMath` floors stay.
 - **CI coverage and cache**: CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of
   `Julia min`, and a test job saves the Julia cache only when it succeeds.
 - **Dependency bounds**: `GeometricIntegrators` `0.17` → `0.18`, `GeometricIntegratorsBase` `0.5.1`
@@ -24,8 +30,8 @@ quotes are re-measured under **Findings** below.
 
   The `SimpleSolvers` entry is a *range* rather than `0.13`, matching what GeometricIntegrators and
   GeometricIntegratorsBase declare: SimpleSolvers 0.13.1 raises its own Julia floor to 1.11, so on
-  the 1.10 LTS the resolver has to fall back to 0.12.2. Pinning `0.13` alone would make this package
-  uninstallable on the LTS, which is why `julia = "1.10"` is unchanged.
+  the 1.10 LTS the resolver has to fall back to 0.12.2. Pinning `0.13` alone would have made this
+  package uninstallable on the LTS, while the floor was Julia 1.10.
 - **Five lower bounds are raised.** On Julia 1.10, with each other entry as written, four old
   floors do not resolve, and two admit a version on which the suite fails:
 
