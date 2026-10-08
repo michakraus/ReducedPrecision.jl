@@ -72,3 +72,14 @@ fix merges, and the CHANGELOG entry of the fix names its ID.
   The duplicates do no harm.
 - **kind:** dead code
 - **found:** #27
+
+### K8 · `BFloat16(::Integer)` overwrites the BFloat16s method, so the package does not precompile on Julia 1.11 either.
+
+- **location:** `src/bfloat16_compat.jl:39`
+- **evidence:** GitHub issue #28 reports `Method overwriting is not permitted during Module
+  precompilation` on Julia 1.10. A critic of the floor raise to Julia 1.11 measured the same error
+  with BFloat16s 0.6.2 on Julia 1.11.9, and on aarch64 with Julia 1.10 to 1.12. The package still
+  loads, and the suite passes. `test/quality/aqua.jl:8` keeps `persistent_tasks = false`. The
+  `[Unreleased]` entry of `CHANGELOG.md` that turns the check off names Julia 1.10 only.
+- **kind:** found late
+- **found:** 2026-10-08

@@ -20,9 +20,7 @@ quotes are re-measured under **Findings** below.
 - **The floors rise** to Julia 1.11, GeometricBase 0.15.0, GeometricEquations 0.21.5,
   GeometricIntegrators 0.18.6, GeometricIntegratorsBase 0.6.9, GeometricProblems 0.9.1,
   GeometricSolutions 0.6.6, RungeKutta 0.6.4 and SimpleSolvers 0.14.1, because GeometricBase 0.15
-  declares its stubs public and requires Julia 1.11. These replace the `julia`, `GeometricBase`,
-  `GeometricIntegrators`, `GeometricSolutions` and `SimpleSolvers` bounds of the two entries below;
-  the `BFloat16s` and `NaNMath` floors stay.
+  declares its stubs public and requires Julia 1.11.
 - **CI coverage and cache**: CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of
   `Julia min`, and a test job saves the Julia cache only when it succeeds.
 - **Dependency bounds**: `GeometricIntegrators` `0.17` → `0.18`, `GeometricIntegratorsBase` `0.5.1`
@@ -43,9 +41,10 @@ quotes are re-measured under **Findings** below.
   | `GeometricSolutions` | `0.6.4` | `0.6.5` | no `GeometricProblems` 0.8–0.9 admits 0.6.4 |
   | `NaNMath` | `1` | `1.1.4` | see below |
 
-  All eleven floors together resolve on 1.10.12. Nothing any user installs changes: the resolver
-  never chose these versions, because it could not. The advisory `Downgrade` job in `CI.yml`, new
-  with this change, runs the suite at exactly these floors.
+  All eleven floors together resolved on 1.10.12, while the floor was Julia 1.10. Nothing any user
+  installs changes: the resolver never chose these versions, because it could not. The advisory
+  `Downgrade` job in `CI.yml`, new with this change, runs the suite at the `[compat]` floors on the
+  lowest Julia.
 
   `NaNMath` 1.1.2 is the lowest version that resolves, because `SymbolicUtils` 4, which
   `Symbolics` 7 needs (through `GeometricProblems` and `EulerLagrange`), admits nothing older. But
