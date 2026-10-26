@@ -29,31 +29,38 @@ function make_reference(::Type{T}) where {T}
     podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt_ref))
 end
 
-const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
+# Run the study and write its figures to `plotdir`.
+function run_experiment(; plotdir = normpath(joinpath(@__DIR__, "..", "plots")))
+    runs = run_study(make_problem)
 
-runs = run_study(make_problem)
+    verify_precision(runs)
 
-verify_precision(runs)
+    plot_energy_error(runs, hamiltonian;
+        path = joinpath(plotdir, "pendulum_energy_error_dt_$(Δt).png"),
+        title = "Pendulum — Relative Energy Error (Δt = 1, t ≤ 10⁴)")
 
-plot_energy_error(runs, hamiltonian;
-    path = joinpath(plotdir, "pendulum_energy_error_dt_$(Δt).png"),
-    title = "Pendulum — Relative Energy Error (Δt = 1, t ≤ 10⁴)")
+    # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
+    reference = try
+        integrate(make_reference(Float64), Gauss(8))
+    catch e
+        @warn "reference integration failed; skipping solution-error plot" error = sprint(
+            showerror, e)
+        nothing
+    end
 
-# high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
-reference = try
-    integrate(make_reference(Float64), Gauss(8))
-catch e
-    @warn "reference integration failed; skipping solution-error plot" error = sprint(showerror, e)
-    nothing
+    if reference !== nothing
+        plot_solution_error(runs, reference;
+            path = joinpath(plotdir, "pendulum_solution_error_dt_$(Δt).png"),
+            title = "Pendulum — Solution Error (Δt = 1, t ≤ 10⁴, vs. Float64 Gauss(8) at Δt = 0.1)")
+
+        plot_solution(runs; reference = reference,
+            path = joinpath(plotdir, "pendulum_solution_dt_$(Δt).png"),
+            title = "Pendulum — Phase-Space Trajectory (Δt = 1, t ≤ 10⁴)",
+            xlabel = "q", ylabel = "p")
+    end
 end
 
-if reference !== nothing
-    plot_solution_error(runs, reference;
-        path = joinpath(plotdir, "pendulum_solution_error_dt_$(Δt).png"),
-        title = "Pendulum — Solution Error (Δt = 1, t ≤ 10⁴, vs. Float64 Gauss(8) at Δt = 0.1)")
-
-    plot_solution(runs; reference = reference,
-        path = joinpath(plotdir, "pendulum_solution_dt_$(Δt).png"),
-        title = "Pendulum — Phase-Space Trajectory (Δt = 1, t ≤ 10⁴)",
-        xlabel = "q", ylabel = "p")
+# `julia scripts/<name>.jl` runs the study; an `include` only defines `run_experiment`.
+if abspath(PROGRAM_FILE) == @__FILE__
+    run_experiment()
 end

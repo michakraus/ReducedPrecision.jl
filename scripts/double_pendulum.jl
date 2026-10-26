@@ -30,32 +30,38 @@ function make_problem(::Type{T}) where {T}
     hodeproblem(q₀, p₀; timespan = tspan, timestep = dt, parameters = params)
 end
 
-const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
+# Run the study and write its figures to `plotdir`.
+function run_experiment(; plotdir = normpath(joinpath(@__DIR__, "..", "plots")))
+    # The default HermiteExtrapolation initial guess works at every precision here, and is the
+    # better choice at every precision — `MidpointExtrapolation` costs failures in half precision.
+    # That rests on the local-frame stepping of `integrate_bounded`: Hermite reads its interval off
+    # the stored history times, and only a clock whose successive values stay exactly Δt apart keeps
+    # the extrapolation parameter `s` at exactly 2. A global T-typed clock would not, on this stiff,
+    # chaotic system at this step (Float16 resolves only ~0.004 near t = 5, comparable to
+    # Δt = 0.01), and a materially wrong `s` shows up as "NaN detected" out of the solver.
+    runs = run_study(make_problem;
+        solver = Newton(), linesearch = Backtracking(), max_iterations = 100)
 
-# The default HermiteExtrapolation initial guess works at every precision here, and is the better
-# choice at every precision — `MidpointExtrapolation` costs failures in half precision. That rests on
-# the local-frame stepping of `integrate_bounded`: Hermite reads its interval off the stored history
-# times, and only a clock whose successive values stay exactly Δt apart keeps the extrapolation
-# parameter `s` at exactly 2. A global T-typed clock would not, on this stiff, chaotic system at this
-# step (Float16 resolves only ~0.004 near t = 5, comparable to Δt = 0.01), and a materially wrong `s`
-# shows up as "NaN detected" out of the solver.
-runs = run_study(make_problem;
-    solver = Newton(), linesearch = Backtracking(), max_iterations = 100)
+    verify_precision(runs)
 
-verify_precision(runs)
+    # high-precision reference (Float64, high-order symplectic, same time grid)
+    reference = integrate(make_problem(Float64), Gauss(8))
 
-# high-precision reference (Float64, high-order symplectic, same time grid)
-reference = integrate(make_problem(Float64), Gauss(8))
+    plot_energy_error(runs, hamiltonian;
+        path = joinpath(plotdir, "double_pendulum_energy_error_dt_$(Δt).png"),
+        title = "Double Pendulum — Relative Energy Error (Δt = 0.01, t ≤ 10)")
 
-plot_energy_error(runs, hamiltonian;
-    path = joinpath(plotdir, "double_pendulum_energy_error_dt_$(Δt).png"),
-    title = "Double Pendulum — Relative Energy Error (Δt = 0.01, t ≤ 10)")
+    plot_solution_error(runs, reference;
+        path = joinpath(plotdir, "double_pendulum_solution_error_dt_$(Δt).png"),
+        title = "Double Pendulum — Solution Error (Δt = 0.01, t ≤ 10, vs. Float64 Gauss(8))")
 
-plot_solution_error(runs, reference;
-    path = joinpath(plotdir, "double_pendulum_solution_error_dt_$(Δt).png"),
-    title = "Double Pendulum — Solution Error (Δt = 0.01, t ≤ 10, vs. Float64 Gauss(8))")
+    plot_solution(runs; reference = reference,
+        path = joinpath(plotdir, "double_pendulum_solution_dt_$(Δt).png"),
+        title = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
+        xlabel = "θ₁", ylabel = "θ₂")
+end
 
-plot_solution(runs; reference = reference,
-    path = joinpath(plotdir, "double_pendulum_solution_dt_$(Δt).png"),
-    title = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
-    xlabel = "θ₁", ylabel = "θ₂")
+# `julia scripts/<name>.jl` runs the study; an `include` only defines `run_experiment`.
+if abspath(PROGRAM_FILE) == @__FILE__
+    run_experiment()
+end

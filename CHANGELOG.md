@@ -19,6 +19,13 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
 (`KNOWN_ISSUES.md` K9).
 
 ### Changed
+- **The output directory of an experiment script is a keyword.** Each of the twelve scripts puts
+  its study in `run_experiment(; plotdir)`, whose default is `plots/` as before, in place of a
+  `const plotdir` derived from `@__DIR__`. A caller can now send the figures elsewhere, a talk's
+  figure directory or a scratch directory, without a copy of the script:
+  `include("scripts/pendulum.jl"); run_experiment(; plotdir = dir)`. The script calls the function
+  only when it is the program, so `julia scripts/<name>.jl` writes the same files as before and an
+  `include` runs nothing. `scripts/run_all.jl` calls `run_experiment()` in each script's module.
 - **The floors rise** to GeometricBase 0.15.0, which declares its stubs public, and with it to
   GeometricEquations 0.21.5, GeometricIntegrators 0.18.6, GeometricIntegratorsBase 0.6.9,
   GeometricProblems 0.9.1, GeometricSolutions 0.6.6, RungeKutta 0.6.4, SimpleSolvers 0.14.1 and
@@ -151,6 +158,10 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   `NaNMath` and `SimpleSolvers` are removed, so the tests resolve against the root `Project.toml`'s
   bounds only. The old `SimpleSolvers = "0.12.1, 0.13"` hid that the root also admits 0.14; the
   suite now runs on what the package claims. Test-only bounds (`Aqua`, `SafeTestsets`) stay.
+
+### Repository hygiene
+- **`.gitignore` ignores the whole `plots/` directory**, not only `plots/*.pdf` and `plots/*.png`,
+  so any other file a script writes there stays out of `git status`.
 
 ## [0.2.0] — 2026-08-08
 

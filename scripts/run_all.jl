@@ -11,9 +11,10 @@
 # e.g. `…_dt_0.1_euler.png`). This regenerates the figures independently of the documentation build.
 #
 # Each script is `include`d into its own throwaway module so their top-level names (`Δt`,
-# `make_problem`, `plotdir`, …) do not clash across scripts. A script that throws is reported and
-# makes the run exit non-zero, but does not stop the remaining scripts (per-run integration
-# failures are already caught inside `run_study` and do not fail a script).
+# `make_problem`, `run_experiment`, …) do not clash across scripts, and its `run_experiment()` is
+# then called there. A script that throws is reported and makes the run exit non-zero, but does not
+# stop the remaining scripts (per-run integration failures are already caught inside `run_study`
+# and do not fail a script).
 
 import Pkg
 Pkg.activate(joinpath(@__DIR__, ".."))
@@ -31,7 +32,9 @@ for (i, path) in enumerate(scripts)
     println("==================== $name ====================")
     try
         # fresh module per script isolates its top-level constants/definitions
-        Base.include(Module(Symbol("Script_", i)), path)
+        mod = Module(Symbol("Script_", i))
+        Base.include(mod, path)
+        Core.eval(mod, :(run_experiment()))
     catch e
         push!(failed, name)
         @error "$name FAILED" exception = (e, catch_backtrace())

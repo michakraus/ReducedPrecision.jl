@@ -81,6 +81,18 @@ julia --project=. scripts/run_all.jl
 Output figure filenames encode the timestep (e.g. `…_dt_0.1_…`), so a problem's two scenarios are
 distinguished by `Δt`.
 
+Each script puts its study in a function `run_experiment(; plotdir)`, whose default is `plots/`,
+and calls it only when the script is the program. To write the figures to another directory,
+`include` the script and call the function:
+
+```julia
+include("scripts/harmonic_oscillator.jl")   # defines run_experiment, runs nothing
+run_experiment(; plotdir = "talk/figures")
+```
+
+The scripts share top-level names such as `Δt` and `make_problem`, so `include` each one into a
+fresh session or module (as `scripts/run_all.jl` does).
+
 The reusable pipeline (`run_study`, `verify_precision`, `energy_error`, `solution_error`, and the
 CairoMakie plotting routines) lives in [`src/ReducedPrecision.jl`](src/ReducedPrecision.jl).
 

@@ -33,24 +33,30 @@ end
 # 2D projection for the trajectory plot: phase space of the first lattice site.
 coords(sol) = (Float64.(vec(Array(sol.q)[1, :])), Float64.(vec(Array(sol.p)[1, :])))
 
-const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
+# Run the study and write its figures to `plotdir`.
+function run_experiment(; plotdir = normpath(joinpath(@__DIR__, "..", "plots")))
+    runs = run_study(make_problem)
 
-runs = run_study(make_problem)
+    verify_precision(runs)
 
-verify_precision(runs)
+    plot_energy_error(runs, hamiltonian;
+        path = joinpath(plotdir, "toda_lattice_energy_error_dt_$(Δt).png"),
+        title = "Toda Lattice — Relative Energy Error (Δt = 0.1, t ≤ 100)")
 
-plot_energy_error(runs, hamiltonian;
-    path = joinpath(plotdir, "toda_lattice_energy_error_dt_$(Δt).png"),
-    title = "Toda Lattice — Relative Energy Error (Δt = 0.1, t ≤ 100)")
+    # high-precision reference (Float64, high-order symplectic, same time grid)
+    reference = integrate(make_problem(Float64), Gauss(8))
 
-# high-precision reference (Float64, high-order symplectic, same time grid)
-reference = integrate(make_problem(Float64), Gauss(8))
+    plot_solution_error(runs, reference;
+        path = joinpath(plotdir, "toda_lattice_solution_error_dt_$(Δt).png"),
+        title = "Toda Lattice — Solution Error (Δt = 0.1, t ≤ 100, vs. Float64 Gauss(8))")
 
-plot_solution_error(runs, reference;
-    path = joinpath(plotdir, "toda_lattice_solution_error_dt_$(Δt).png"),
-    title = "Toda Lattice — Solution Error (Δt = 0.1, t ≤ 100, vs. Float64 Gauss(8))")
+    plot_solution(runs; reference = reference,
+        path = joinpath(plotdir, "toda_lattice_solution_dt_$(Δt).png"),
+        title = "Toda Lattice — Phase-Space Trajectory (Δt = 0.1, t ≤ 100)",
+        coords = coords, xlabel = "q₁", ylabel = "p₁")
+end
 
-plot_solution(runs; reference = reference,
-    path = joinpath(plotdir, "toda_lattice_solution_dt_$(Δt).png"),
-    title = "Toda Lattice — Phase-Space Trajectory (Δt = 0.1, t ≤ 100)",
-    coords = coords, xlabel = "q₁", ylabel = "p₁")
+# `julia scripts/<name>.jl` runs the study; an `include` only defines `run_experiment`.
+if abspath(PROGRAM_FILE) == @__FILE__
+    run_experiment()
+end

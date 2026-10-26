@@ -93,4 +93,5 @@ julia --project=. scripts/run_all.jl
 ```
 
 Each script writes its figures to `plots/`. The documentation embeds those figures, so the scripts
-must be run before building the docs.
+must be run before building the docs. To write the figures elsewhere, `include` a script, which
+defines `run_experiment` without running it, and call `run_experiment(; plotdir = "<directory>")`.

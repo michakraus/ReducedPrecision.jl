@@ -25,32 +25,38 @@ make_reference(::Type{T}) where {T} = _lv_problem(T, Δt_ref)
 
 ham(t, q, p, params) = hamiltonian(t, q, params)
 
-const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
+# Run the study and write its figures to `plotdir`.
+function run_experiment(; plotdir = normpath(joinpath(@__DIR__, "..", "plots")))
+    runs = run_study(make_problem; methods = LV2D_METHODS)
 
-runs = run_study(make_problem; methods = LV2D_METHODS)
+    verify_precision(runs)
 
-verify_precision(runs)
+    # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
+    reference = try
+        integrate(make_reference(Float64), Gauss(8))
+    catch e
+        @warn "reference integration failed; skipping solution-error and trajectory plots" error = sprint(
+            showerror, e)
+        nothing
+    end
 
-# high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
-reference = try
-    integrate(make_reference(Float64), Gauss(8))
-catch e
-    @warn "reference integration failed; skipping solution-error and trajectory plots" error = sprint(
-        showerror, e)
-    nothing
+    plot_energy_error(runs, ham; groups = LV2D_GROUPS,
+        path = joinpath(plotdir, "lotka_volterra_2d_energy_error_dt_$(Δt).png"),
+        title = "Lotka–Volterra 2D — Relative Energy Error (Δt = 0.1, t ≤ 100)")
+
+    if reference !== nothing
+        plot_solution_error(runs, reference; groups = LV2D_GROUPS,
+            path = joinpath(plotdir, "lotka_volterra_2d_solution_error_dt_$(Δt).png"),
+            title = "Lotka–Volterra 2D — Solution Error (Δt = 0.1, t ≤ 100, vs. Float64 Gauss(8) at Δt = 0.01)")
+
+        plot_solution(runs; reference = reference, groups = LV2D_GROUPS,
+            path = joinpath(plotdir, "lotka_volterra_2d_solution_dt_$(Δt).png"),
+            title = "Lotka–Volterra 2D — Configuration-Space Trajectory (Δt = 0.1, t ≤ 100)",
+            xlabel = "q₁", ylabel = "q₂")
+    end
 end
 
-plot_energy_error(runs, ham; groups = LV2D_GROUPS,
-    path = joinpath(plotdir, "lotka_volterra_2d_energy_error_dt_$(Δt).png"),
-    title = "Lotka–Volterra 2D — Relative Energy Error (Δt = 0.1, t ≤ 100)")
-
-if reference !== nothing
-    plot_solution_error(runs, reference; groups = LV2D_GROUPS,
-        path = joinpath(plotdir, "lotka_volterra_2d_solution_error_dt_$(Δt).png"),
-        title = "Lotka–Volterra 2D — Solution Error (Δt = 0.1, t ≤ 100, vs. Float64 Gauss(8) at Δt = 0.01)")
-
-    plot_solution(runs; reference = reference, groups = LV2D_GROUPS,
-        path = joinpath(plotdir, "lotka_volterra_2d_solution_dt_$(Δt).png"),
-        title = "Lotka–Volterra 2D — Configuration-Space Trajectory (Δt = 0.1, t ≤ 100)",
-        xlabel = "q₁", ylabel = "q₂")
+# `julia scripts/<name>.jl` runs the study; an `include` only defines `run_experiment`.
+if abspath(PROGRAM_FILE) == @__FILE__
+    run_experiment()
 end

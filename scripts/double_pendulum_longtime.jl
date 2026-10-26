@@ -29,34 +29,41 @@ end
 make_problem(::Type{T}) where {T} = _dp_problem(T, Δt)
 make_reference(::Type{T}) where {T} = _dp_problem(T, Δt_ref)
 
-const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
+# Run the study and write its figures to `plotdir`.
+function run_experiment(; plotdir = normpath(joinpath(@__DIR__, "..", "plots")))
+    # The default HermiteExtrapolation guess is the right one at every precision here; see
+    # double_pendulum.jl for why that depends on the local-frame stepping of `integrate_bounded`.
+    runs = run_study(make_problem;
+        solver = Newton(), linesearch = Backtracking(), max_iterations = 100)
 
-# The default HermiteExtrapolation guess is the right one at every precision here; see
-# double_pendulum.jl for why that depends on the local-frame stepping of `integrate_bounded`.
-runs = run_study(make_problem;
-    solver = Newton(), linesearch = Backtracking(), max_iterations = 100)
+    verify_precision(runs)
 
-verify_precision(runs)
+    plot_energy_error(runs, hamiltonian;
+        path = joinpath(plotdir, "double_pendulum_energy_error_dt_$(Δt).png"),
+        title = "Double Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 10)")
 
-plot_energy_error(runs, hamiltonian;
-    path = joinpath(plotdir, "double_pendulum_energy_error_dt_$(Δt).png"),
-    title = "Double Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 10)")
+    # high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
+    reference = try
+        integrate(make_reference(Float64), Gauss(8))
+    catch e
+        @warn "reference integration failed; skipping solution-error plot" error = sprint(
+            showerror, e)
+        nothing
+    end
 
-# high-precision reference (Float64, high-order symplectic, fine step, subsampled to the grid)
-reference = try
-    integrate(make_reference(Float64), Gauss(8))
-catch e
-    @warn "reference integration failed; skipping solution-error plot" error = sprint(showerror, e)
-    nothing
+    if reference !== nothing
+        plot_solution_error(runs, reference;
+            path = joinpath(plotdir, "double_pendulum_solution_error_dt_$(Δt).png"),
+            title = "Double Pendulum — Solution Error (Δt = 0.1, t ≤ 10, vs. Float64 Gauss(8) at Δt = 0.01)")
+
+        plot_solution(runs; reference = reference,
+            path = joinpath(plotdir, "double_pendulum_solution_dt_$(Δt).png"),
+            title = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.1, t ≤ 10)",
+            xlabel = "θ₁", ylabel = "θ₂")
+    end
 end
 
-if reference !== nothing
-    plot_solution_error(runs, reference;
-        path = joinpath(plotdir, "double_pendulum_solution_error_dt_$(Δt).png"),
-        title = "Double Pendulum — Solution Error (Δt = 0.1, t ≤ 10, vs. Float64 Gauss(8) at Δt = 0.01)")
-
-    plot_solution(runs; reference = reference,
-        path = joinpath(plotdir, "double_pendulum_solution_dt_$(Δt).png"),
-        title = "Double Pendulum — Configuration-Space Trajectory (Δt = 0.1, t ≤ 10)",
-        xlabel = "θ₁", ylabel = "θ₂")
+# `julia scripts/<name>.jl` runs the study; an `include` only defines `run_experiment`.
+if abspath(PROGRAM_FILE) == @__FILE__
+    run_experiment()
 end

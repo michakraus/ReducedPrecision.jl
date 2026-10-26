@@ -22,24 +22,30 @@ function make_problem(::Type{T}) where {T}
     podeproblem(T.(PD.q₀), T.(PD.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 end
 
-const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
+# Run the study and write its figures to `plotdir`.
+function run_experiment(; plotdir = normpath(joinpath(@__DIR__, "..", "plots")))
+    runs = run_study(make_problem)
 
-runs = run_study(make_problem)
+    verify_precision(runs)
 
-verify_precision(runs)
+    # high-precision reference (Float64, high-order symplectic, same time grid)
+    reference = integrate(make_problem(Float64), Gauss(8))
 
-# high-precision reference (Float64, high-order symplectic, same time grid)
-reference = integrate(make_problem(Float64), Gauss(8))
+    plot_energy_error(runs, hamiltonian;
+        path = joinpath(plotdir, "pendulum_energy_error_dt_$(Δt).png"),
+        title = "Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 1000)")
 
-plot_energy_error(runs, hamiltonian;
-    path = joinpath(plotdir, "pendulum_energy_error_dt_$(Δt).png"),
-    title = "Pendulum — Relative Energy Error (Δt = 0.1, t ≤ 1000)")
+    plot_solution_error(runs, reference;
+        path = joinpath(plotdir, "pendulum_solution_error_dt_$(Δt).png"),
+        title = "Pendulum — Solution Error (Δt = 0.1, t ≤ 1000, vs. Float64 Gauss(8))")
 
-plot_solution_error(runs, reference;
-    path = joinpath(plotdir, "pendulum_solution_error_dt_$(Δt).png"),
-    title = "Pendulum — Solution Error (Δt = 0.1, t ≤ 1000, vs. Float64 Gauss(8))")
+    plot_solution(runs; reference = reference,
+        path = joinpath(plotdir, "pendulum_solution_dt_$(Δt).png"),
+        title = "Pendulum — Phase-Space Trajectory (Δt = 0.1, t ≤ 1000)",
+        xlabel = "q", ylabel = "p")
+end
 
-plot_solution(runs; reference = reference,
-    path = joinpath(plotdir, "pendulum_solution_dt_$(Δt).png"),
-    title = "Pendulum — Phase-Space Trajectory (Δt = 0.1, t ≤ 1000)",
-    xlabel = "q", ylabel = "p")
+# `julia scripts/<name>.jl` runs the study; an `include` only defines `run_experiment`.
+if abspath(PROGRAM_FILE) == @__FILE__
+    run_experiment()
+end
