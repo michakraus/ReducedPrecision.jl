@@ -19,24 +19,30 @@ function make_problem(::Type{T}) where {T}
     podeproblem(T.(HO.q₀), T.(HO.p₀); timespan = (T(t₀), T(t₁)), timestep = T(Δt))
 end
 
-const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
+# Run the study and write its figures to `plotdir`.
+function run_experiment(; plotdir = normpath(joinpath(@__DIR__, "..", "plots")))
+    runs = run_study(make_problem)
 
-runs = run_study(make_problem)
+    verify_precision(runs)
 
-verify_precision(runs)
+    # reference (analytic)
+    reference = exact_solution(make_problem(Float64))
 
-# reference (analytic)
-reference = exact_solution(make_problem(Float64))
+    plot_energy_error(runs, hamiltonian;
+        path = joinpath(plotdir, "harmonic_oscillator_energy_error_dt_$(Δt).png"),
+        title = "Harmonic Oscillator — Relative Energy Error (Δt = 1, t ≤ 10⁴)")
 
-plot_energy_error(runs, hamiltonian;
-    path = joinpath(plotdir, "harmonic_oscillator_energy_error_dt_$(Δt).png"),
-    title = "Harmonic Oscillator — Relative Energy Error (Δt = 1, t ≤ 10⁴)")
+    plot_solution_error(runs, reference;
+        path = joinpath(plotdir, "harmonic_oscillator_solution_error_dt_$(Δt).png"),
+        title = "Harmonic Oscillator — Solution Error (Δt = 1, t ≤ 10⁴, vs. analytic)")
 
-plot_solution_error(runs, reference;
-    path = joinpath(plotdir, "harmonic_oscillator_solution_error_dt_$(Δt).png"),
-    title = "Harmonic Oscillator — Solution Error (Δt = 1, t ≤ 10⁴, vs. analytic)")
+    plot_solution(runs; reference = reference,
+        path = joinpath(plotdir, "harmonic_oscillator_solution_dt_$(Δt).png"),
+        title = "Harmonic Oscillator — Phase-Space Trajectory (Δt = 1, t ≤ 10⁴)",
+        xlabel = "q", ylabel = "p")
+end
 
-plot_solution(runs; reference = reference,
-    path = joinpath(plotdir, "harmonic_oscillator_solution_dt_$(Δt).png"),
-    title = "Harmonic Oscillator — Phase-Space Trajectory (Δt = 1, t ≤ 10⁴)",
-    xlabel = "q", ylabel = "p")
+# `julia scripts/<name>.jl` runs the study; an `include` only defines `run_experiment`.
+if abspath(PROGRAM_FILE) == @__FILE__
+    run_experiment()
+end

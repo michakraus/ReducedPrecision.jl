@@ -29,24 +29,30 @@ end
 # Hamiltonian closure (energy depends on q only; energy_error evaluates it as (t,q,p,params)).
 ham(t, q, p, params) = hamiltonian(t, q, params)
 
-const plotdir = normpath(joinpath(@__DIR__, "..", "plots"))
+# Run the study and write its figures to `plotdir`.
+function run_experiment(; plotdir = normpath(joinpath(@__DIR__, "..", "plots")))
+    runs = run_study(make_problem; methods = LV4D_METHODS)
 
-runs = run_study(make_problem; methods = LV4D_METHODS)
+    verify_precision(runs)
 
-verify_precision(runs)
+    # high-precision reference (Float64, high-order symplectic, same time grid)
+    reference = integrate(make_problem(Float64), Gauss(8))
 
-# high-precision reference (Float64, high-order symplectic, same time grid)
-reference = integrate(make_problem(Float64), Gauss(8))
+    plot_energy_error(runs, ham; groups = LV4D_GROUPS,
+        path = joinpath(plotdir, "lotka_volterra_4d_energy_error_dt_$(Δt).png"),
+        title = "Lotka–Volterra 4D — Relative Energy Error (Δt = 0.01, t ≤ 10)")
 
-plot_energy_error(runs, ham; groups = LV4D_GROUPS,
-    path = joinpath(plotdir, "lotka_volterra_4d_energy_error_dt_$(Δt).png"),
-    title = "Lotka–Volterra 4D — Relative Energy Error (Δt = 0.01, t ≤ 10)")
+    plot_solution_error(runs, reference; groups = LV4D_GROUPS,
+        path = joinpath(plotdir, "lotka_volterra_4d_solution_error_dt_$(Δt).png"),
+        title = "Lotka–Volterra 4D — Solution Error (Δt = 0.01, t ≤ 10, vs. Float64 Gauss(8))")
 
-plot_solution_error(runs, reference; groups = LV4D_GROUPS,
-    path = joinpath(plotdir, "lotka_volterra_4d_solution_error_dt_$(Δt).png"),
-    title = "Lotka–Volterra 4D — Solution Error (Δt = 0.01, t ≤ 10, vs. Float64 Gauss(8))")
+    plot_solution(runs; reference = reference, groups = LV4D_GROUPS,
+        path = joinpath(plotdir, "lotka_volterra_4d_solution_dt_$(Δt).png"),
+        title = "Lotka–Volterra 4D — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
+        xlabel = "q₁", ylabel = "q₂")
+end
 
-plot_solution(runs; reference = reference, groups = LV4D_GROUPS,
-    path = joinpath(plotdir, "lotka_volterra_4d_solution_dt_$(Δt).png"),
-    title = "Lotka–Volterra 4D — Configuration-Space Trajectory (Δt = 0.01, t ≤ 10)",
-    xlabel = "q₁", ylabel = "q₂")
+# `julia scripts/<name>.jl` runs the study; an `include` only defines `run_experiment`.
+if abspath(PROGRAM_FILE) == @__FILE__
+    run_experiment()
+end
