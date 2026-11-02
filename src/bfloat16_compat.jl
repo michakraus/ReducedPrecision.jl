@@ -1,4 +1,4 @@
-# Gaps in BFloat16s.jl (v0.6.1) and NaNMath that the integration stack needs.
+# Gaps in BFloat16s.jl (v0.6.3) and NaNMath that the integration stack needs.
 #
 # BFloat16s defines arithmetic and the elementary functions by round-tripping through `Float32`
 # (see its `bfloat16.jl`), but not a handful of two-argument ones. `Base` has no generic
@@ -18,9 +18,6 @@
 
 Base.rem(x::BFloat16, y::BFloat16) = BFloat16(rem(Float32(x), Float32(y)))
 Base.atan(x::BFloat16, y::BFloat16) = BFloat16(atan(Float32(x), Float32(y)))
-function Base.fma(x::BFloat16, y::BFloat16, z::BFloat16)
-    BFloat16(fma(Float32(x), Float32(y), Float32(z)))
-end
 
 # `Base.sincos` recurses into itself for BFloat16 (it has no `IEEEFloat` guard), overflowing the
 # stack rather than erroring; route it through the scalar `sin`/`cos` that BFloat16s does define.

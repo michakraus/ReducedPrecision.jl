@@ -57,7 +57,8 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   installs changes: the resolver never chose these versions, because it could not. The advisory
   `Downgrade` job in `CI.yml`, new with this change, runs the suite at the `[compat]` floors on the
   lowest Julia. The floor raise above replaces the `GeometricBase`, `GeometricIntegrators` and
-  `GeometricSolutions` rows; the `BFloat16s` and `NaNMath` rows stand.
+  `GeometricSolutions` rows, and the `fma` fix under **Bug fixes** replaces the `BFloat16s` row;
+  the `NaNMath` row stands.
 
   `NaNMath` 1.1.2 is the lowest version that resolves, because `SymbolicUtils` 4, which
   `Symbolics` 7 needs (through `GeometricProblems` and `EulerLagrange`), admits nothing older. But
@@ -130,7 +131,29 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   dependency bump can tell a moved figure from a stale one in one command rather than by re-running
   the full sweep and reading figures.
 
+### Bug fixes
+- **The package no longer overwrites the `fma` of BFloat16s 0.6.3.** BFloat16s 0.6.3 defines
+  `fma(::BFloat16, ::BFloat16, ::BFloat16)` itself, so the package's own method in
+  `src/bfloat16_compat.jl` overwrote it, and precompilation stopped with `Method overwriting is
+  not permitted during Module precompilation`. The resolver picks 0.6.3 wherever it is available,
+  so the package did not load at all: the Documentation job and the CI jobs on Julia `pre` and
+  `nightly` failed on it. The package's method is removed, and the `BFloat16s` floor rises from
+  `0.5.1` to `0.6.3`, the first release with `fma`. A test checks that `fma` on `BFloat16` comes
+  from BFloat16s. The package precompiles with this on Julia 1.13.3 and on 1.14.0-alpha2.
+  Where BFloat16s uses LLVM's `bf16` arithmetic, its `fma` is a fused `bf16`
+  operation rather than the `Float32` round trip of the removed method, so a result can differ by
+  one `BFloat16` unit in the last place; the quoted figures were not re-measured for this.
+
 ### Documentation
+- **The Documentation workflow generates the figures.** The docs link the figures that the
+  experiment scripts write to `plots/`, and the shared workflow never ran the scripts, so every
+  build failed on 84 missing images. `Documenter.yml` is now this repository's own: one job per
+  script in `scripts/` (twelve) runs it and uploads its figures, and one `documenter` job
+  collects them into `plots/`, builds the site, and deploys it only when every script job
+  succeeded. The figures change with the solver packages, so they are not committed.
+  `docs/make.jl` stops with an error that names each missing figure and its page, or a missing
+  `plots/` directory, before `makedocs` runs; it only warned before. Locally, each script took
+  one to two minutes and the docs build a few seconds.
 - The re-measured floors are carried into `docs/src/findings.md`, `docs/src/index.md`,
   `docs/src/harmonic_oscillator.md` and `docs/src/pendulum.md`. The findings table now says which of
   its entries are expected to move with a dependency release and which are not, and names the script
@@ -142,6 +165,14 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   Same failure, at the same place, reported more precisely.
 
 ### Tests
+- **`capped_final_time(BFloat16, 1000.0, 0.1)` is 16.375 on Julia 1.14 and 16.25 before**, and
+  the test now expects each. The function mirrors the `Base` float range `0:Δt:t`, whose length
+  comes from `fld`; for `BFloat16` that is Base's generic `AbstractFloat` `div`. Before 1.14 it
+  rounds `(x - rem(x, y)) / y` twice in `BFloat16`, so `fld(16.375, 0.1)` is 164, one too many,
+  and the grid `0:0.1:16.375` repeats its last point. Julia 1.14 computes
+  `x / y - rem(x, y) / y`, which gives the correct 163. The same change shortens one grid of the
+  sweep: the `BFloat16` grid `0:0.1:10` of `scripts/double_pendulum_longtime.jl` has 101 points
+  before 1.14 and 100 from 1.14 on. The docs build runs on Julia `1`, which is 1.13 now.
 - The suite passes unedited: 296 of 296, with `--check-bounds=auto`.
 - **The suite follows the shared test layout.** The testsets of the single `test/runtests.jl` move,
   unchanged, into one file per source file (`bfloat16_compat.jl`, `methods.jl`, `initial_guess.jl`,
