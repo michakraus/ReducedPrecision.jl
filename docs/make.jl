@@ -18,12 +18,14 @@ for f in readdir(plotsdir)
 end
 
 # Fail before `makedocs` if a page links a figure that no script produced, and name the
-# figures and the pages. The filename prefix is the script's problem name, and a `_dt_1.0`
-# or `_dt_0.01` figure comes from its `_longtime` variant.
+# figures and the pages. The filename prefix is the script's problem name, and the larger of a
+# problem's two time steps comes from its `_longtime` variant. The check reads `plots/`, not
+# `figures/`, which keeps the copies of earlier builds.
 missing_figures = String[]
 for page in filter(endswith(".md"), readdir(srcdir))
     for m in eachmatch(r"\]\((figures/[^)\s]+)\)", read(joinpath(srcdir, page), String))
-        isfile(joinpath(srcdir, m[1])) || push!(missing_figures, "$page: $(m[1])")
+        isfile(joinpath(plotsdir, basename(m[1]))) ||
+            push!(missing_figures, "$page: $(m[1])")
     end
 end
 isempty(missing_figures) ||

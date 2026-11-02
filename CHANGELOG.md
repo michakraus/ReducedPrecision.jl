@@ -132,7 +132,7 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   the full sweep and reading figures.
 
 ### Bug fixes
-- **The package precompiles with BFloat16s 0.6.3.** BFloat16s 0.6.3 defines
+- **The package no longer overwrites the `fma` of BFloat16s 0.6.3.** BFloat16s 0.6.3 defines
   `fma(::BFloat16, ::BFloat16, ::BFloat16)` itself, so the package's own method in
   `src/bfloat16_compat.jl` overwrote it, and precompilation stopped with `Method overwriting is
   not permitted during Module precompilation`. The resolver picks 0.6.3 wherever it is available,
