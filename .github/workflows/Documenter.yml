@@ -1,61 +1,113 @@
-# Canonical documentation workflow. Copied verbatim into every repository that has a tracked
-# docs/make.jl, by harness workflows — edit this file and re-run the installer, never a copy in a
-# repository.
-#
-# The file name is Documenter.yml everywhere. Three repositories called it Documentation.yml and one
-# Documentation.yaml; nothing depends on the file name, but a tree in which the same workflow has
-# three names cannot be checked for drift.
-#
-# DOCTESTS ARE NOT HERE. They run in CI.yml, in a job pinned to one OS and one Julia version, so
-# that they produce a required status check of their own. Before that, five repositories listed
-# `:doctest` in `warnonly` and one had `doctest = false`, which meant a doctest failure was a
-# warning inside a docs build that nothing gated.
-#
-# A repository whose docs are a multi-job pipeline rather than a single build, such as a Weave
-# matrix or a sweep matrix, legitimately keeps its own version of this file; it is not
-# scaffolding drift. The profile's `docs_exceptions` lists them.
-
 name: Documentation
 
+# The documentation embeds the figures that the experiment scripts in `scripts/` write to
+# `plots/`. They change with the solver packages, so they are generated here rather than
+# committed: one job per script, then one job that collects them and builds the site.
 on:
-    push:
-        branches:
-            - main
-            - master
-        tags: ["*"]
-    pull_request:
-    workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+  pull_request:
+  workflow_dispatch:
 
+# Superseded runs on the same ref are pointless.
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Widened to `write` on the deploying job only.
+permissions:
+  contents: read
 
 jobs:
-    build:
-        name: Documentation
-        runs-on: ubuntu-latest
-        timeout-minutes: 90
-        permissions:
-            actions: write
-            contents: write
-            statuses: write
+  # One job per experiment script. Each runs the full method × precision sweep of one problem
+  # and time step and writes its figures to `plots/`, which the job uploads. A script takes
+  # one to two minutes on an Apple M-series machine, most of it compilation.
+  figures:
+    name: Figures ${{ matrix.script }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      # One failing script must not stop the remaining figures from being generated.
+      fail-fast: false
+      matrix:
+        script:
+          - harmonic_oscillator
+          - harmonic_oscillator_longtime
+          - pendulum
+          - pendulum_longtime
+          - double_pendulum
+          - double_pendulum_longtime
+          - toda_lattice
+          - toda_lattice_longtime
+          - lotka_volterra_2d
+          - lotka_volterra_2d_longtime
+          - lotka_volterra_4d
+          - lotka_volterra_4d_longtime
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      # All jobs of this workflow share one depot cache: the default cache name includes the
+      # job name and the matrix values, which would give one near-identical cache per matrix
+      # cell and a cold cache in the `documenter` job.
+      - uses: julia-actions/cache@v3
+        with:
+          cache-name: julia-cache;workflow=${{ github.workflow }}
+          include-matrix: false
+      - name: Install dependencies
+        run: julia --project --color=yes -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+      - name: Run the experiment script
+        run: julia --project --color=yes scripts/${{ matrix.script }}.jl
+      - uses: actions/upload-artifact@v7
+        with:
+          name: figures-${{ matrix.script }}
+          path: plots/*.png
+          if-no-files-found: error
+          retention-days: 1
+
+  # Collect the figures of all scripts, then build and deploy the docs.
+  documenter:
+    name: Documenter
+    needs: figures
+    # Build even when some scripts failed, so that there is a build log; `docs/make.jl` names
+    # every missing figure and fails. `!cancelled()` still respects cancellation through the
+    # `concurrency` group.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v3
+        with:
+          cache-name: julia-cache;workflow=${{ github.workflow }}
+      - name: Install dependencies
+        run: |
+          julia --project=docs --color=yes -e '
+            using Pkg
+            Pkg.develop(PackageSpec(path = pwd()))
+            Pkg.instantiate()'
+      # Doctests are not here: they run in CI.yml, in a job pinned to one OS and one Julia version,
+      # so that they produce a required status check of their own.
+      - name: Collect the figures
+        uses: actions/download-artifact@v8
+        with:
+          pattern: figures-*
+          merge-multiple: true
+          path: plots
+      - name: Build and deploy
+        run: julia --project=docs --color=yes docs/make.jl
         env:
-            # GR needs a headless backend on the runner. Harmless where the docs use CairoMakie.
-            GKSwstype: "100"
-        steps:
-            - uses: actions/checkout@v7
-            - uses: julia-actions/setup-julia@v3
-              with:
-                  version: "1"
-            - uses: julia-actions/cache@v3
-            - name: Instantiate the documentation environment
-              run: |
-                  julia --project=docs -e '
-                    using Pkg
-                    Pkg.develop(PackageSpec(path = pwd()))
-                    Pkg.instantiate()'
-            - uses: julia-actions/julia-buildpkg@v1
-            - uses: julia-actions/julia-docdeploy@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          # Publish a complete site only: `needs.figures.result` is `success` exactly when every
+          # matrix job succeeded.
+          DEPLOY_DOCS: ${{ needs.figures.result == 'success' }}

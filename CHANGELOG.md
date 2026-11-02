@@ -57,7 +57,8 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   installs changes: the resolver never chose these versions, because it could not. The advisory
   `Downgrade` job in `CI.yml`, new with this change, runs the suite at the `[compat]` floors on the
   lowest Julia. The floor raise above replaces the `GeometricBase`, `GeometricIntegrators` and
-  `GeometricSolutions` rows; the `BFloat16s` and `NaNMath` rows stand.
+  `GeometricSolutions` rows, and the `fma` fix under **Bug fixes** replaces the `BFloat16s` row;
+  the `NaNMath` row stands.
 
   `NaNMath` 1.1.2 is the lowest version that resolves, because `SymbolicUtils` 4, which
   `Symbolics` 7 needs (through `GeometricProblems` and `EulerLagrange`), admits nothing older. But
@@ -130,7 +131,28 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   dependency bump can tell a moved figure from a stale one in one command rather than by re-running
   the full sweep and reading figures.
 
+### Bug fixes
+- **The package precompiles with BFloat16s 0.6.3.** BFloat16s 0.6.3 defines
+  `fma(::BFloat16, ::BFloat16, ::BFloat16)` itself, so the package's own method in
+  `src/bfloat16_compat.jl` overwrote it, and precompilation stopped with `Method overwriting is
+  not permitted during Module precompilation`. The resolver picks 0.6.3 wherever it is available,
+  so the package did not load at all, which is how the Documentation job failed. The package's
+  method is removed, and the `BFloat16s` floor rises from `0.5.1` to `0.6.3`, the first release
+  with `fma`. A test checks that `fma` on `BFloat16` comes from BFloat16s. Where BFloat16s uses
+  LLVM's `bf16` arithmetic, its `fma` is a fused `bf16` operation rather than the `Float32`
+  round trip of the removed method, so a result can differ by one `BFloat16` unit in the last
+  place; the quoted figures were not re-measured for this.
+
 ### Documentation
+- **The Documentation workflow generates the figures.** The docs link the figures that the
+  experiment scripts write to `plots/`, and the shared workflow never ran the scripts, so every
+  build failed on 84 missing images. `Documenter.yml` is now this repository's own: one job per
+  script in `scripts/` (twelve) runs it and uploads its figures, and one `documenter` job
+  collects them into `plots/`, builds the site, and deploys it only when every script job
+  succeeded. The figures change with the solver packages, so they are not committed.
+  `docs/make.jl` stops with an error that names each missing figure and its page, or a missing
+  `plots/` directory, before `makedocs` runs; it only warned before. Locally, each script took
+  one to two minutes and the docs build a few seconds.
 - The re-measured floors are carried into `docs/src/findings.md`, `docs/src/index.md`,
   `docs/src/harmonic_oscillator.md` and `docs/src/pendulum.md`. The findings table now says which of
   its entries are expected to move with a dependency release and which are not, and names the script

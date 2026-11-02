@@ -107,7 +107,8 @@ julia --project=docs docs/make.jl
 ```
 
 `docs/make.jl` copies `plots/*.png` into the (git-ignored) `docs/src/figures/` and embeds them, so
-the figures are never committed — they are regenerated on every build.
+the figures are never committed — they are regenerated on every build. It stops with an error that
+names every figure a page links but `plots/` does not hold.
 
 ## Development
 
@@ -124,8 +125,9 @@ in CI but not locally is usually this, not a bug in the script.
 
 The two CI workflows are split by concern. `CI.yml` runs the tests and the doctests, on a matrix of
 `min` — the lower bound of this project's `[compat] julia` entry — and `1`, the current stable
-release, across Linux, macOS and Windows. `Documenter.yml` runs all twelve experiment scripts to
-regenerate `plots/`, then builds and deploys the site.
+release, across Linux, macOS and Windows. `Documenter.yml` runs the twelve experiment scripts in
+parallel, one job each, collects their figures into `plots/`, then builds the site, and deploys it
+only when every script job succeeded.
 
 `CI.yml` is byte-identical across the related repositories, which is why its matrix names versions
 by alias rather than by number: a required status check is named after the job that produces it, so
