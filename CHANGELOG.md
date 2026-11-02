@@ -143,6 +143,12 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   Where BFloat16s uses LLVM's `bf16` arithmetic, its `fma` is a fused `bf16`
   operation rather than the `Float32` round trip of the removed method, so a result can differ by
   one `BFloat16` unit in the last place; the quoted figures were not re-measured for this.
+- **The package no longer overwrites `BFloat16(::Integer)` of BFloat16s.** Where LLVM has no
+  `bf16` arithmetic, for example aarch64 below LLVM 19 and so Julia 1.12 on Apple silicon, BFloat16s
+  defines `BFloat16(x::Integer)` itself, and the package's method for `Integer` overwrote it:
+  precompilation stopped with `Method overwriting is not permitted during Module precompilation`.
+  The package's method now takes `BigInt` alone, the one integer type of `Base` that the LLVM path
+  of BFloat16s does not construct from, so it adds a method on both paths and overwrites none.
 
 ### Documentation
 - **The Documentation workflow generates the figures.** The docs link the figures that the
