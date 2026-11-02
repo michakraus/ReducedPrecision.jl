@@ -28,12 +28,13 @@ Base.sincos(x::BFloat16) = (sin(x), cos(x))
 # half of what `Solution(problem)` needs.
 Base.Integer(x::BFloat16) = Integer(Float32(x))
 
-# BFloat16s constructs from the fixed-width integer types but not from `BigInt`, which is how the
-# tableau coefficients of the fixed-coefficient rules (`ExplicitMidpoint`, `RK4`) arrive — `RungeKutta`
-# builds them from exact rationals. This also covers `Rational{BigInt}`, since
-# `convert(::Type{<:AbstractFloat}, ::Rational)` divides the converted numerator by the converted
-# denominator.
-BFloat16(x::Integer) = BFloat16(Float32(x))
+# Where LLVM does `BFloat16` arithmetic (x86_64 from LLVM 15, aarch64 from LLVM 19), BFloat16s
+# constructs from the fixed-width integer types but not from `BigInt`. `RungeKutta` builds its
+# tableaux from exact numbers, so an all-integer coefficient vector arrives as `BigInt`, such as the
+# weights `[0, 1]` of `ExplicitMidpoint`; a rational one converts through `BigFloat`, which
+# BFloat16s handles. Elsewhere BFloat16s defines `BFloat16(::Integer)` itself, so the method is for
+# `BigInt` alone: a method for `Integer` would overwrite that one.
+BFloat16(x::BigInt) = BFloat16(Float32(x))
 
 # `NaNMath` returns `NaN` where `Base` would throw a `DomainError`, which is what lets an implicit
 # solver reject a trial state outside a model's domain instead of aborting the run. Its
