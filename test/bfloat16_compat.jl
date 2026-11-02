@@ -31,4 +31,7 @@ import NaNMath
     @test Integer(BFloat16(7)) == 7
     @test sincos(BFloat16(0.5)) === (sin(BFloat16(0.5)), cos(BFloat16(0.5)))
     @test BFloat16(big(3)) === BFloat16(3.0)
+    # `fma` comes from BFloat16s itself (0.6.3 on); the package must not define it again
+    @test fma(BFloat16(2), BFloat16(3), BFloat16(1)) === BFloat16(7)
+    @test nameof(which(fma, Tuple{BFloat16, BFloat16, BFloat16}).module) === :BFloat16s
 end

@@ -75,10 +75,10 @@ fix merges, and the CHANGELOG entry of the fix names its ID.
 
 ### K8 · `BFloat16(::Integer)` overwrites the BFloat16s method on aarch64 with Julia 1.11 and 1.12, so the package does not precompile there.
 
-- **location:** `src/bfloat16_compat.jl:39`
+- **location:** `src/bfloat16_compat.jl:36`
 - **evidence:** GitHub issue #28 reports `Method overwriting is not permitted during Module
   precompilation` on Julia 1.10. The same error shows with BFloat16s 0.6.2 on aarch64 with Julia
-  1.10 to 1.12, 1.11.9 among them. BFloat16s 0.5.1 to 0.6.2 define `BFloat16(x::Integer)` only
+  1.10 to 1.12, 1.11.9 among them. BFloat16s 0.5.1 to 0.6.3 define `BFloat16(x::Integer)` only
   where `llvm_arithmetic` in their `src/bfloat16.jl` is false: without `Core.BFloat16`, which is
   Julia 1.10, and on aarch64 below LLVM 19, which is Julia 1.11 (LLVM 16) and 1.12 (LLVM 18). On
   x86_64 from Julia 1.11, and on aarch64 from Julia 1.13 (LLVM 20), BFloat16s does not define it,

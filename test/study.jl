@@ -34,7 +34,12 @@ end
     @test capped_final_time(Float64, 1000.0, 0.1) == 1000.0
     @test capped_final_time(Float32, 1000.0, 0.1) == 1000.0
     @test capped_final_time(Float16, 1000.0, 0.1) == 128.0
-    @test capped_final_time(BFloat16, 1000.0, 0.1) == 16.25
+    # The grid is a `Base` float range, whose length comes from `fld`. For `BFloat16`, `fld` is
+    # Base's generic `AbstractFloat` `div`. Before Julia 1.14 it rounds `(x - rem(x, y)) / y`
+    # twice, so `fld(16.375, 0.1)` is 164, one too many, and the rebuilt grid `0:0.1:16.375`
+    # repeats its last point. Julia 1.14 computes `x / y - rem(x, y) / y`, which gives 163.
+    @test capped_final_time(BFloat16, 1000.0, 0.1) ==
+          (VERSION >= v"1.14.0-" ? 16.375 : 16.25)
     @test capped_final_time(BFloat16, 10.0, 0.01) ≈ 2.0 atol = 0.1
     # a coarser step stays resolvable for longer
     @test capped_final_time(BFloat16, 10_000.0, 1.0) == 256.0
