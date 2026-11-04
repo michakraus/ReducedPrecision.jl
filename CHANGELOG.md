@@ -35,7 +35,7 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   only when it is the program, so `julia scripts/<name>.jl` writes the same files as before and an
   `include` runs nothing. `scripts/run_all.jl` calls `run_experiment()` in each script's module.
 - **The floors rise** to GeometricBase 0.15.0, which declares its stubs public, and with it to
-  GeometricEquations 0.21.5, GeometricIntegrators 0.18.6, GeometricIntegratorsBase 0.6.9,
+  GeometricEquations 0.21.5, GeometricIntegrators 0.19, GeometricIntegratorsBase 0.7,
   GeometricProblems 0.9.1, GeometricSolutions 0.6.6, RungeKutta 0.6.4, SimpleSolvers 0.14.1 and
   Julia 1.12. The Julia floor is 1.12, not the 1.11 that GeometricBase 0.15 requires, because on
   Julia 1.11 LLVM 16 on x86_64 aborts on the vectorised Float32-to-BFloat16 conversion
