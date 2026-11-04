@@ -19,6 +19,14 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
 (`KNOWN_ISSUES.md` K9).
 
 ### Changed
+- **The labels `Symplectic Euler A` and `Symplectic Euler B` name the other method.** The floors
+  rise to GeometricIntegrators 0.19 and GeometricIntegratorsBase 0.7, which follow the letters of
+  Leimkuhler and Reich, *Simulating Hamiltonian Dynamics* (2004): A evaluates the Hamiltonian at
+  `(q_{n+1}, p_n)` and B at `(q_n, p_{n+1})`. `SymplecticEulerA()` and `SymplecticEulerB()` keep
+  their names and exchange their meaning, and the labels in `src/methods.jl` follow the names. The
+  study runs both, so the set of results is the same; a run stored under one label before this
+  change belongs under the other. The documentation quotes the two as one class, "symplectic Euler
+  A/B", and no figure in it depends on which is which. The figures are not re-measured.
 - **The output directory of an experiment script is a keyword.** Each of the twelve scripts puts
   its study in `run_experiment(; plotdir)`, whose default is `plots/` as before, in place of a
   `const plotdir` derived from `@__DIR__`. A caller can now send the figures elsewhere, a talk's
