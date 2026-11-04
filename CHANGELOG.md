@@ -19,6 +19,14 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
 (`KNOWN_ISSUES.md` K9).
 
 ### Changed
+- **The labels `Symplectic Euler A` and `Symplectic Euler B` name the other method.** The floors
+  rise to GeometricIntegrators 0.19 and GeometricIntegratorsBase 0.7, which follow the letters of
+  Leimkuhler and Reich, *Simulating Hamiltonian Dynamics* (2004): A evaluates the Hamiltonian at
+  `(q_{n+1}, p_n)` and B at `(q_n, p_{n+1})`. `SymplecticEulerA()` and `SymplecticEulerB()` keep
+  their names and exchange their meaning, and the labels in `src/methods.jl` follow the names. The
+  study runs both, so the set of results is the same; a run stored under one label before this
+  change belongs under the other. The documentation quotes the two as one class, "symplectic Euler
+  A/B", and no figure in it depends on which is which. The figures are not re-measured.
 - **The output directory of an experiment script is a keyword.** Each of the twelve scripts puts
   its study in `run_experiment(; plotdir)`, whose default is `plots/` as before, in place of a
   `const plotdir` derived from `@__DIR__`. A caller can now send the figures elsewhere, a talk's
@@ -27,7 +35,7 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   only when it is the program, so `julia scripts/<name>.jl` writes the same files as before and an
   `include` runs nothing. `scripts/run_all.jl` calls `run_experiment()` in each script's module.
 - **The floors rise** to GeometricBase 0.15.0, which declares its stubs public, and with it to
-  GeometricEquations 0.21.5, GeometricIntegrators 0.18.6, GeometricIntegratorsBase 0.6.9,
+  GeometricEquations 0.21.5, GeometricIntegrators 0.19, GeometricIntegratorsBase 0.7,
   GeometricProblems 0.9.1, GeometricSolutions 0.6.6, RungeKutta 0.6.4, SimpleSolvers 0.14.1 and
   Julia 1.12. The Julia floor is 1.12, not the 1.11 that GeometricBase 0.15 requires, because on
   Julia 1.11 LLVM 16 on x86_64 aborts on the vectorised Float32-to-BFloat16 conversion
