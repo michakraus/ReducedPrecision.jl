@@ -36,10 +36,12 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
   `include` runs nothing. `scripts/run_all.jl` calls `run_experiment()` in each script's module.
 - **The floors rise** to GeometricBase 0.15.0, which declares its stubs public, and with it to
   GeometricEquations 0.21.5, GeometricIntegrators 0.19, GeometricIntegratorsBase 0.7,
-  GeometricProblems 0.9.1, GeometricSolutions 0.6.6, RungeKutta 0.6.4, SimpleSolvers 0.14.1 and
+  GeometricProblems 0.10, GeometricSolutions 0.6.6, RungeKutta 0.6.4, SimpleSolvers 0.14.1 and
   Julia 1.12. The Julia floor is 1.12, not the 1.11 that GeometricBase 0.15 requires, because on
   Julia 1.11 LLVM 16 on x86_64 aborts on the vectorised Float32-to-BFloat16 conversion
-  (`Cannot select … v16bf16 = X86ISD::VFPROUND`).
+  (`Cannot select … v16bf16 = X86ISD::VFPROUND`). The one breaking change of GeometricProblems
+  0.10 is in `LinearWave`, which this package does not use, so no source, test or script changes
+  for it.
 - **CI coverage and cache**: CI uploads coverage from the `Julia 1 - ubuntu-latest` job instead of
   `Julia min`, and a test job saves the Julia cache only when it succeeds.
 - **Dependency bounds**: `GeometricIntegrators` `0.17` → `0.18`, `GeometricIntegratorsBase` `0.5.1`
