@@ -19,6 +19,13 @@ quotes are re-measured under **Findings** below, on these versions. The floor ra
 (`KNOWN_ISSUES.md` K9).
 
 ### Changed
+- **GeometricSolutions 0.7 is admitted**: the bound `GeometricSolutions` `0.6.6` → `0.6.6, 0.7`.
+  The one breaking change of GeometricSolutions 0.7 is a fifth type parameter of
+  `EnsembleSolution`. This package does not use `EnsembleSolution` and does not re-export
+  GeometricSolutions, so the change does not reach its source, its tests, its scripts or its users.
+  The test and docs environments set no bound on GeometricSolutions, GeometricIntegrators,
+  GeometricIntegratorsBase or GeometricProblems, and need no change. The figures are not
+  re-measured on 0.7.
 - **The labels `Symplectic Euler A` and `Symplectic Euler B` name the other method.** The floors
   rise to GeometricIntegrators 0.19 and GeometricIntegratorsBase 0.7, which follow the letters of
   Leimkuhler and Reich, *Simulating Hamiltonian Dynamics* (2004): A evaluates the Hamiltonian at
